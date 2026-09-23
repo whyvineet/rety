@@ -1,12 +1,40 @@
-[
-  {
-    "severity": "error",
-    "path": "tests/fixtures/untyped_function.py",
-    "line": 22,
-    "col": 10,
-    "end_line": 22,
-    "end_col": 33,
-    "code": "unsupported-operand",
-    "message": "Unsupported operand types for `+`: `str` and `int`"
-  }
-]
+{
+  "errors": [
+    {
+      "line": 20,
+      "column": 5,
+      "stop_line": 20,
+      "stop_column": 14,
+      "path": "tests/fixtures/untyped_function.py",
+      "code": -2,
+      "name": "unannotated-return",
+      "description": "`add_items` is missing a return annotation",
+      "concise_description": "`add_items` is missing a return annotation",
+      "severity": "error"
+    },
+    {
+      "line": 20,
+      "column": 15,
+      "stop_line": 20,
+      "stop_column": 16,
+      "path": "tests/fixtures/untyped_function.py",
+      "code": -2,
+      "name": "implicit-any-parameter",
+      "description": "`add_items` is missing an annotation for parameter `x`",
+      "concise_description": "`add_items` is missing an annotation for parameter `x`",
+      "severity": "error"
+    },
+    {
+      "line": 20,
+      "column": 18,
+      "stop_line": 20,
+      "stop_column": 19,
+      "path": "tests/fixtures/untyped_function.py",
+      "code": -2,
+      "name": "implicit-any-parameter",
+      "description": "`add_items` is missing an annotation for parameter `y`",
+      "concise_description": "`add_items` is missing an annotation for parameter `y`",
+      "severity": "error"
+    }
+  ]
+}

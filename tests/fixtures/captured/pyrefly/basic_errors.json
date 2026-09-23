@@ -1,0 +1,40 @@
+{
+  "errors": [
+    {
+      "line": 9,
+      "column": 12,
+      "stop_line": 9,
+      "stop_column": 16,
+      "path": "tests/fixtures/basic_errors.py",
+      "code": -2,
+      "name": "bad-return",
+      "description": "Returned type `str` is not assignable to declared return type `int`",
+      "concise_description": "Returned type `str` is not assignable to declared return type `int`",
+      "severity": "error"
+    },
+    {
+      "line": 12,
+      "column": 10,
+      "stop_line": 12,
+      "stop_column": 13,
+      "path": "tests/fixtures/basic_errors.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`Literal['a']` is not assignable to `int`",
+      "concise_description": "`Literal['a']` is not assignable to `int`",
+      "severity": "error"
+    },
+    {
+      "line": 13,
+      "column": 5,
+      "stop_line": 13,
+      "stop_column": 19,
+      "path": "tests/fixtures/basic_errors.py",
+      "code": -2,
+      "name": "unknown-name",
+      "description": "Could not find name `undefined_name`",
+      "concise_description": "Could not find name `undefined_name`",
+      "severity": "error"
+    }
+  ]
+}

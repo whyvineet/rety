@@ -4,34 +4,45 @@ Pyrefly adapter for rety.
 Invocation:
     pyrefly check --output-format json <paths>
 
-Output format:
-    Pyrefly (1.0 released May 2026, monthly cadence) emits JSON. The exact
-    schema is verified against the pinned version in tests/CHECKER_VERSIONS.md.
-    This adapter is written defensively because Pyrefly's schema stability
-    across monthly releases is unproven at time of writing.
+Output format (verified against Pyrefly 1.3.1 on 2026-09-24):
+    A single JSON document on stdout:
 
-    Known output variants handled:
-    - Top-level JSON array of diagnostic objects
-    - Top-level JSON object with a "diagnostics" or "errors" key
-    - JSON-lines (fallback, in case a future version changes the format)
+    {
+      "errors": [
+        {
+          "line": 9,
+          "column": 12,
+          "stop_line": 9,
+          "stop_column": 16,
+          "path": "tests/fixtures/basic_errors.py",
+          "code": -2,
+          "name": "bad-return",
+          "description": "Returned type `str` is not assignable to declared return type `int`",
+          "concise_description": "Returned type `str` is not assignable to declared return type `int`",
+          "severity": "error"
+        }
+      ]
+    }
+
+    - line/column and stop_line/stop_column are 1-indexed. stop_column is an
+      exclusive end, the same convention rety uses for mypy (end_column + 1)
+      and Pyright (end.character + 1).
+    - "name" is the rule name ("bad-return", "unknown-name", ...). "code" is
+      an internal integer (-2 in every observed diagnostic) and is NOT the
+      rule; the adapter ignores it.
+    - "description" may span several lines; "concise_description" is the
+      one-line form. rety stores "description".
+    - Paths are relative to the invocation cwd when relative paths are given.
+    - The "INFO N errors" summary and config notices go to stderr, not stdout.
+
+    Real captured output lives in tests/fixtures/captured/pyrefly/.
 
     Pyrefly also supports: github, junit-xml, sarif, min-text, full-text,
-    omit-errors. The "sarif" format is the only native SARIF 2.1.0 emitter
-    among the four checkers — worth noting for v0.2 SARIF renderer work.
-
-    Pyrefly also exposes `pyrefly coverage report` for annotation-completeness
-    metrics, and baseline files for regression detection. Neither is used by
-    rety in v0.1, but the baseline mechanism is relevant to the planned
-    regression-detection feature in v0.3+.
+    omit-errors. sarif is the only native SARIF 2.1.0 emitter among the four
+    checkers, which is relevant to a future SARIF renderer.
 
 Cache behavior:
-    Verify in Phase 0 whether Pyrefly has incremental caching that could leak
-    flags across long-lived CI runners (similar to mypy's stale-cache bug).
-
-Phase 0 note:
-    Run `pyrefly check --output-format json tests/fixtures/untyped_function.py`
-    and capture the raw bytes to tests/fixtures/captured/pyrefly/. Update this
-    adapter's field names to match actual output before relying on parse().
+    Pyrefly has no on-disk cache that could carry flags between invocations.
 """
 
 from __future__ import annotations
@@ -73,9 +84,9 @@ class PyreflyAdapter(CheckerAdapter):
 
     def detect_version(self) -> Optional[str]:
         """
-        Run `pyrefly --version` and parse the version string.
+        Run ``pyrefly --version`` and parse the version string.
 
-        Pyrefly --version output format: "pyrefly 1.3.0" (verify in Phase 0).
+        Output format: "pyrefly 1.3.1".
         """
         try:
             result = subprocess.run(
@@ -113,126 +124,93 @@ class PyreflyAdapter(CheckerAdapter):
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
         """
-        Parse Pyrefly JSON output into NormalizedDiagnostic instances.
+        Parse Pyrefly's JSON document into NormalizedDiagnostic instances.
 
-        Handles three output variants: JSON array, JSON object with a key,
-        and JSON-lines fallback. Defensive field access because Pyrefly's
-        schema may change across monthly releases.
+        Accepts the documented ``{"errors": [...]}`` shape and, defensively,
+        a bare top-level list. Malformed JSON or malformed entries are
+        skipped with a RuntimeWarning rather than raising.
         """
         stdout = raw.stdout.strip()
         if not stdout:
             return []
 
-        # Try single-document JSON first (most common)
         try:
             doc = json.loads(stdout)
-            return self._parse_document(doc, raw.version)
-        except json.JSONDecodeError:
-            pass
-
-        # Fall back to JSON-lines
-        diagnostics: list[NormalizedDiagnostic] = []
-        parse_errors = 0
-        for line in stdout.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                diag = self._parse_single(obj, raw.version)
-                if diag is not None:
-                    diagnostics.append(diag)
-            except json.JSONDecodeError:
-                parse_errors += 1
-
-        if parse_errors:
+        except json.JSONDecodeError as exc:
             warnings.warn(
-                f"pyrefly adapter: {parse_errors} line(s) could not be parsed as JSON. "
-                f"This may indicate a Pyrefly version change. "
-                f"Check tests/fixtures/captured/pyrefly/ for expected output samples.",
+                f"pyrefly adapter: stdout is not valid JSON ({exc.msg} at char "
+                f"{exc.pos}). This may indicate a Pyrefly version change; compare "
+                f"against tests/fixtures/captured/pyrefly/. "
+                f"First 120 chars: {stdout[:120]!r}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return []
+
+        items = self._extract_items(doc)
+
+        diagnostics: list[NormalizedDiagnostic] = []
+        skipped = 0
+        for item in items:
+            diag = self._parse_single(item, raw.version)
+            if diag is None:
+                skipped += 1
+            else:
+                diagnostics.append(diag)
+
+        if skipped:
+            warnings.warn(
+                f"pyrefly adapter: {skipped} entr{'y' if skipped == 1 else 'ies'} "
+                f"in the JSON output lacked a usable 'line' field and were skipped. "
+                f"This may indicate a Pyrefly version change.",
                 RuntimeWarning,
                 stacklevel=2,
             )
 
         return diagnostics
 
-    def _parse_document(
-        self,
-        doc: Any,
-        version: Optional[str],
-    ) -> list[NormalizedDiagnostic]:
-        """Parse a single decoded JSON document (array or object)."""
+    @staticmethod
+    def _extract_items(doc: Any) -> list[Any]:
+        """Return the list of diagnostic entries from a decoded JSON document."""
         if isinstance(doc, list):
-            items = doc
-        elif isinstance(doc, dict):
-            # Try common top-level keys for the diagnostic list
-            items = doc.get("diagnostics", doc.get("errors", doc.get("results", None)))
-            if items is None:
-                # Maybe the dict IS a single diagnostic
-                items = [doc]
-        else:
-            return []
-
-        diagnostics = []
-        for item in items:
-            diag = self._parse_single(item, version)
-            if diag is not None:
-                diagnostics.append(diag)
-        return diagnostics
+            return doc
+        if isinstance(doc, dict):
+            for key in ("errors", "diagnostics"):
+                value = doc.get(key)
+                if isinstance(value, list):
+                    return value
+        return []
 
     def _parse_single(
         self,
         obj: Any,
         version: Optional[str],
     ) -> Optional[NormalizedDiagnostic]:
-        """
-        Parse a single Pyrefly diagnostic object.
-
-        Field names are accessed defensively using multiple fallback keys
-        because Pyrefly's schema is young and field names are unconfirmed
-        against real output. Update to use exact field names after Phase 0.
-        """
+        """Parse one Pyrefly diagnostic object; None if it has no usable line."""
         if not isinstance(obj, dict):
             return None
 
-        # Severity — try multiple field name patterns
-        severity_raw = (
-            obj.get("severity")
-            or obj.get("kind")
-            or obj.get("level")
-            or "error"
-        )
+        start_line = _positive_int_or_none(obj.get("line"))
+        if start_line is None:
+            return None
+
+        severity_raw = obj.get("severity") or "error"
         severity = _SEVERITY_MAP.get(str(severity_raw).lower(), Severity.error)
 
-        # File path
-        file_raw: str = (
-            obj.get("path") or obj.get("file") or obj.get("filename") or ""
-        )
-        file_path = str(Path(file_raw).resolve()) if file_raw else ""
+        file_raw = obj.get("path") or ""
+        file_path = str(Path(str(file_raw)).resolve()) if file_raw else ""
 
-        # Line and column — try multiple field name patterns
-        start_line = int(obj.get("line", obj.get("start_line", obj.get("row", 1))))
-        start_col_raw = obj.get("col", obj.get("column", obj.get("start_col", obj.get("start_column"))))
-        start_col: Optional[int] = _coerce_col(start_col_raw)
+        # 1-indexed already; 0 or negative means unknown.
+        start_col = _positive_int_or_none(obj.get("column"))
+        end_line = _positive_int_or_none(obj.get("stop_line"))
+        end_col = _positive_int_or_none(obj.get("stop_column"))
 
-        end_line_raw = obj.get("end_line", obj.get("end_row"))
-        end_line: Optional[int] = _coerce_col(end_line_raw)
+        # "name" is the rule; the integer "code" field is not.
+        name = obj.get("name")
+        code = str(name) if name else None
 
-        end_col_raw = obj.get("end_col", obj.get("end_column", obj.get("end_character")))
-        end_col: Optional[int] = _coerce_col(end_col_raw)
-
-        # Error code
-        code_raw = (
-            obj.get("code")
-            or obj.get("error_code")
-            or obj.get("rule")
-            or obj.get("name")
-        )
-        code = str(code_raw) if code_raw is not None else None
-
-        # Message
         message = str(
-            obj.get("message", obj.get("description", obj.get("text", "")))
+            obj.get("description") or obj.get("concise_description") or ""
         )
 
         return NormalizedDiagnostic(
@@ -250,15 +228,12 @@ class PyreflyAdapter(CheckerAdapter):
         )
 
 
-def _coerce_col(value: Any) -> Optional[int]:
-    """
-    Convert a column/line value to int|None, treating 0 as None.
-    Pyrefly's schema is unconfirmed — defensive coercion prevents crashes.
-    """
-    if value is None:
+def _positive_int_or_none(value: Any) -> Optional[int]:
+    """Coerce a 1-indexed position to int; None for missing, non-int, or < 1."""
+    if value is None or isinstance(value, bool):
         return None
     try:
         v = int(value)
-        return None if v == 0 else v
     except (ValueError, TypeError):
         return None
+    return v if v >= 1 else None
