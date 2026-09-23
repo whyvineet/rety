@@ -47,6 +47,21 @@ from rety.schema import NormalizedDiagnostic, RawInvocation
 # ---------------------------------------------------------------------------
 
 
+#: How to install each built-in checker. Shown when a checker is skipped or
+#: when --require-all fails.
+INSTALL_HINTS: dict[str, str] = {
+    "mypy": "pip install mypy  OR  uv tool install mypy",
+    "pyright": "pip install pyright  OR  npm install -g pyright",
+    "pyrefly": "pip install pyrefly  OR  uv tool install pyrefly",
+    "ty": "pip install ty  OR  uv tool install ty",
+}
+
+
+def install_hint(checker_name: str) -> str:
+    """Return the install hint for a checker, or a generic one."""
+    return INSTALL_HINTS.get(checker_name, f"Install {checker_name}")
+
+
 class CheckerUnavailableError(Exception):
     """
     Raised when a required checker is not installed or not on PATH.
@@ -54,15 +69,8 @@ class CheckerUnavailableError(Exception):
     Provides a concrete install hint so the user knows exactly what to do.
     """
 
-    _INSTALL_HINTS: dict[str, str] = {
-        "mypy": "pip install mypy  OR  uv tool install mypy",
-        "pyright": "npm install -g pyright  OR  pip install pyright",
-        "pyrefly": "pip install pyrefly  OR  uv tool install pyrefly",
-        "ty": "pip install ty  OR  uv tool install ty",
-    }
-
     def __init__(self, checker_name: str) -> None:
-        hint = self._INSTALL_HINTS.get(checker_name, f"Install {checker_name}")
+        hint = install_hint(checker_name)
         super().__init__(
             f"Checker '{checker_name}' is not installed or not found on PATH.\n"
             f"To install: {hint}"

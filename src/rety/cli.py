@@ -25,7 +25,7 @@ import click
 from rety import __version__
 from rety.adapters import ALL_ADAPTERS
 from rety.align import align
-from rety.runner import CheckerUnavailableError, run_checkers
+from rety.runner import CheckerUnavailableError, install_hint, run_checkers
 from rety.schema import ComparisonReport
 
 
@@ -153,6 +153,19 @@ def check(
     except CheckerUnavailableError as exc:
         click.echo(f"Error: {exc}", err=True)
         sys.exit(1)
+
+    # Tell the user which selected checkers were not found, and how to get them.
+    ran = {result.checker_name for result in results}
+    skipped = [name for name in checker_names if name not in ran]
+    if skipped:
+        click.echo(
+            f"Skipped {len(skipped)} checker(s) not installed or not on PATH: "
+            + ", ".join(skipped),
+            err=True,
+        )
+        for name in skipped:
+            click.echo(f"  {name:<8} {install_hint(name)}", err=True)
+        click.echo("Use --require-all to fail instead of skipping.", err=True)
 
     if not results:
         click.echo(
