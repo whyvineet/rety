@@ -1,0 +1,1 @@
+tests/fixtures/untyped_function.py:22:10: error Unsupported operand types for `+`: `str` and `int` [unsupported-operator]

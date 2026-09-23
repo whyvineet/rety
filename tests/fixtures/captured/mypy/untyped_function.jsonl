@@ -1,0 +1,1 @@
+{"file": "tests/fixtures/untyped_function.py", "line": 22, "column": 10, "end_line": 22, "end_column": 33, "severity": "error", "message": "Unsupported operand types for + (\"str\" and \"int\")", "code": "operator", "hint": null}

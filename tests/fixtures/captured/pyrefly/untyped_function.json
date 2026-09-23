@@ -1,0 +1,12 @@
+[
+  {
+    "severity": "error",
+    "path": "tests/fixtures/untyped_function.py",
+    "line": 22,
+    "col": 10,
+    "end_line": 22,
+    "end_col": 33,
+    "code": "unsupported-operand",
+    "message": "Unsupported operand types for `+`: `str` and `int`"
+  }
+]

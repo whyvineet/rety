@@ -1,0 +1,22 @@
+{
+  "version": "1.1.380",
+  "generalDiagnostics": [
+    {
+      "file": "/abs/tests/fixtures/untyped_function.py",
+      "severity": "error",
+      "message": "Operator \"+\" not supported for types \"str\" and \"int\"",
+      "rule": "reportOperatorIssue",
+      "range": {
+        "start": {"line": 21, "character": 9},
+        "end": {"line": 21, "character": 32}
+      }
+    }
+  ],
+  "summary": {
+    "filesAnalyzed": 1,
+    "errorCount": 1,
+    "warningCount": 0,
+    "informationCount": 0,
+    "timeInSec": 0.38
+  }
+}
