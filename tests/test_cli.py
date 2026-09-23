@@ -61,7 +61,7 @@ def test_require_all_fails_when_checker_missing(fake_registry: dict[str, FakeAda
         cli.main, ["check", "--require-all", "--checker", "mypy,pyrefly", str(target)]
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "pyrefly" in result.stderr
     assert "not installed" in result.stderr
 
@@ -112,3 +112,43 @@ def test_duplicate_checker_names_run_once(fake_registry: dict[str, FakeAdapter],
     report = json.loads(result.stdout)
     assert report["checkers_run"] == ["mypy", "pyright"]
     assert report["total_diagnostics"] == {"mypy": 1, "pyright": 1}
+
+
+# ---------------------------------------------------------------------------
+# --fail-on exit codes
+# ---------------------------------------------------------------------------
+
+
+def _invoke_fail_on(level: str, target: Path, checker: str = "mypy") -> int:
+    args = ["check", "--fail-on", level, "--checker", checker, str(target)]
+    return CliRunner().invoke(cli.main, args).exit_code
+
+
+def test_fail_on_none_exits_0_even_with_errors(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+    assert _invoke_fail_on("none", target) == 0
+
+
+def test_fail_on_error_exits_1_when_errors_found(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+    assert _invoke_fail_on("error", target) == 1
+
+
+def test_fail_on_any_exits_1_when_anything_found(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+    assert _invoke_fail_on("any", target) == 1
+
+
+def test_fail_on_error_ignores_warnings_but_any_does_not(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from rety.schema import Severity
+
+    warner = FakeAdapter("mypy", severity=Severity.warning)
+    monkeypatch.setattr(cli, "ALL_ADAPTERS", {"mypy": lambda **_kw: warner})
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    assert _invoke_fail_on("error", target) == 0
+    assert _invoke_fail_on("any", target) == 1

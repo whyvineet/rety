@@ -27,7 +27,7 @@ from rety.adapters import ALL_ADAPTERS
 from rety.align import align
 from rety.report import json_report, terminal
 from rety.runner import CheckerUnavailableError, install_hint, run_checkers
-from rety.schema import ComparisonReport
+from rety.schema import ComparisonReport, Severity
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +136,17 @@ def _ensure_utf8_streams() -> None:
     metavar="SECONDS",
     help="Seconds to wait for each checker before giving up on it. 0 = no limit.",
 )
+@click.option(
+    "--fail-on",
+    type=click.Choice(["none", "error", "any"], case_sensitive=False),
+    default="none",
+    show_default=True,
+    help=(
+        "Exit with status 1 if any checker reported a diagnostic at this level: "
+        "'error' = error-severity diagnostics, 'any' = any diagnostic. "
+        "'none' exits 0 whenever the run itself succeeds."
+    ),
+)
 def check(
     paths: tuple[str, ...],
     checker: str,
@@ -145,6 +156,7 @@ def check(
     verbose: bool,
     require_all: bool,
     timeout: float,
+    fail_on: str,
 ) -> None:
     """Run type checkers on PATH(s) and compare their diagnostics.
 
@@ -160,6 +172,13 @@ def check(
         rety check --checker mypy,pyright src/ tests/
         rety check --format json --output results.json src/
         rety check --line-tolerance 1 --verbose src/api.py
+        rety check --fail-on error src/
+
+    \b
+    Exit codes:
+        0  run completed and the --fail-on threshold was not met
+        1  the --fail-on threshold was met
+        2  usage error, no checker available, or --require-all not satisfied
     """
     if output and output_format != "json":
         raise click.UsageError("--output is only valid with --format json.")
@@ -183,7 +202,7 @@ def check(
         )
     except CheckerUnavailableError as exc:
         click.echo(f"Error: {exc}", err=True)
-        sys.exit(1)
+        sys.exit(2)
 
     # Tell the user which selected checkers were not found, and how to get them.
     ran = {result.checker_name for result in results}
@@ -205,7 +224,7 @@ def check(
             + "\nSee: https://github.com/whyvineet/rety#install",
             err=True,
         )
-        sys.exit(1)
+        sys.exit(2)
 
     # Report any adapter errors (non-zero returncode is normal; unexpected
     # exceptions are worth surfacing as warnings)
@@ -251,10 +270,23 @@ def check(
     else:
         terminal.render(report, verbose=verbose)
 
+    if _fail_threshold_met(report, fail_on.lower()):
+        sys.exit(1)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _fail_threshold_met(report: ComparisonReport, fail_on: str) -> bool:
+    """True if --fail-on asks for a non-zero exit given this report."""
+    if fail_on == "none":
+        return False
+    diagnostics = [d for cluster in report.clusters for d in cluster.diagnostics]
+    if fail_on == "any":
+        return bool(diagnostics)
+    return any(d.severity == Severity.error for d in diagnostics)
 
 
 def _parse_checker_names(checker_str: str) -> list[str]:

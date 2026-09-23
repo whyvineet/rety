@@ -26,6 +26,7 @@ class FakeAdapter(CheckerAdapter):
         fail: bool = False,
         timeout_after: Optional[float] = None,
         timeout: Optional[float] = None,
+        severity: Severity = Severity.error,
     ) -> None:
         super().__init__(timeout=timeout)
         self._name = name
@@ -33,6 +34,7 @@ class FakeAdapter(CheckerAdapter):
         self._delay = delay
         self._fail = fail
         self._timeout_after = timeout_after
+        self._severity = severity
         self.version_calls = 0
         self.seen_cwd: Optional[str] = None
         self.seen_paths: list[str] = []
@@ -67,7 +69,7 @@ class FakeAdapter(CheckerAdapter):
         return [
             NormalizedDiagnostic(
                 checker=self._name, file="/x.py", start_line=1,
-                severity=Severity.error, message=raw.stdout, raw=raw.stdout,
+                severity=self._severity, message=raw.stdout, raw=raw.stdout,
             )
         ]
 
