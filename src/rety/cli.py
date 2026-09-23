@@ -25,6 +25,7 @@ import click
 from rety import __version__
 from rety.adapters import ALL_ADAPTERS
 from rety.align import align
+from rety.report import json_report, terminal
 from rety.runner import CheckerUnavailableError, install_hint, run_checkers
 from rety.schema import ComparisonReport
 
@@ -212,17 +213,13 @@ def check(
 
     # Render
     if output_format == "json":
-        from rety.report.json_report import render, render_to_file
-
         if output:
-            render_to_file(report, output)
+            json_report.render_to_file(report, output)
             click.echo(f"JSON report written to: {output}")
         else:
-            click.echo(render(report))
+            click.echo(json_report.render(report))
     else:
-        from rety.report.terminal import render
-
-        render(report, verbose=verbose)
+        terminal.render(report, verbose=verbose)
 
 
 # ---------------------------------------------------------------------------
