@@ -442,6 +442,10 @@ def _score_cluster(
         else:
             signals.append(f"linked through other members: {pair}")
 
+    # A checker with two diagnostics on one line yields the same pairwise
+    # signal twice; keep the first occurrence so --verbose stays readable.
+    signals = list(dict.fromkeys(signals))
+
     if has_exact:
         return Confidence.HIGH, signals
     if has_overlap:

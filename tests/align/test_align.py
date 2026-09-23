@@ -478,3 +478,13 @@ def test_enrichment_is_stored_on_each_diagnostic() -> None:
     (c,) = align([diag("mypy", first, file=MULTILINE_FILE, col=1)])
 
     assert c.diagnostics[0].enclosing_node_type == "Assign"
+
+
+def test_pairwise_signals_are_not_repeated() -> None:
+    """Two mypy diagnostics on one line must not duplicate the mypy ↔ pyright signal."""
+    clusters = align(
+        [diag("mypy", 18, message="a"), diag("mypy", 18, message="b"), diag("pyright", 18)]
+    )
+
+    (c,) = clusters
+    assert c.alignment_signals == ["exact range L18-18: mypy ↔ pyright"]
