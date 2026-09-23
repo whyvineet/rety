@@ -51,10 +51,9 @@ import json
 import subprocess
 import time
 import warnings
-from pathlib import Path
 from typing import Any, Optional
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter
+from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 _SEVERITY_MAP: dict[str, Severity] = {
@@ -120,6 +119,7 @@ class PyreflyAdapter(CheckerAdapter):
             stderr=result.stderr,
             duration_ms=duration_ms,
             version=version,
+            cwd=cwd,
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
@@ -152,7 +152,7 @@ class PyreflyAdapter(CheckerAdapter):
         diagnostics: list[NormalizedDiagnostic] = []
         skipped = 0
         for item in items:
-            diag = self._parse_single(item, raw.version)
+            diag = self._parse_single(item, raw.version, raw.cwd)
             if diag is None:
                 skipped += 1
             else:
@@ -185,6 +185,7 @@ class PyreflyAdapter(CheckerAdapter):
         self,
         obj: Any,
         version: Optional[str],
+        raw_cwd: Optional[str] = None,
     ) -> Optional[NormalizedDiagnostic]:
         """Parse one Pyrefly diagnostic object; None if it has no usable line."""
         if not isinstance(obj, dict):
@@ -198,7 +199,7 @@ class PyreflyAdapter(CheckerAdapter):
         severity = _SEVERITY_MAP.get(str(severity_raw).lower(), Severity.error)
 
         file_raw = obj.get("path") or ""
-        file_path = str(Path(str(file_raw)).resolve()) if file_raw else ""
+        file_path = resolve_path(str(file_raw), raw_cwd) if file_raw else ""
 
         # 1-indexed already; 0 or negative means unknown.
         start_col = _positive_int_or_none(obj.get("column"))

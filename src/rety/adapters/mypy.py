@@ -42,10 +42,9 @@ import subprocess
 import tempfile
 import time
 import warnings
-from pathlib import Path
 from typing import Any, Optional
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter
+from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # mypy severity strings → Severity enum
@@ -127,6 +126,7 @@ class MypyAdapter(CheckerAdapter):
             stderr=result.stderr,
             duration_ms=duration_ms,
             version=version,
+            cwd=cwd,
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
@@ -159,10 +159,10 @@ class MypyAdapter(CheckerAdapter):
             end_line: Optional[int] = _line_or_none(obj.get("end_line"))
             end_col: Optional[int] = _col_to_1indexed(obj.get("end_column"))
 
-            # Resolve relative paths against the Python process CWD.
-            # (mypy outputs relative paths when invoked with relative path args.)
+            # mypy prints paths relative to its cwd when given relative args;
+            # resolve against the invocation cwd recorded on RawInvocation.
             file_raw: str = obj.get("file", "")
-            file_path = str(Path(file_raw).resolve()) if file_raw else ""
+            file_path = resolve_path(file_raw, raw.cwd) if file_raw else ""
 
             diagnostics.append(
                 NormalizedDiagnostic(

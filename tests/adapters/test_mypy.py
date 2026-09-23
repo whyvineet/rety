@@ -213,3 +213,13 @@ def test_multiple_diagnostics_parsed_in_order() -> None:
         Severity.error, Severity.warning, Severity.note,
     ]
     assert [d.start_line for d in diagnostics] == [1, 5, 10]
+
+
+def test_relative_file_resolves_against_invocation_cwd(tmp_path: Path) -> None:
+    """Paths are resolved against the cwd the checker ran in, not the process cwd."""
+    raw = RawInvocation(
+        checker="mypy", returncode=1, stdout=_line(file="pkg/mod.py"), stderr="",
+        duration_ms=1.0, version="2.3.1", cwd=str(tmp_path),
+    )
+    (d,) = ADAPTER.parse(raw)
+    assert d.file == str((tmp_path / "pkg" / "mod.py").resolve())

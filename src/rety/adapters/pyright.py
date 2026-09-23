@@ -47,10 +47,9 @@ from __future__ import annotations
 import json
 import subprocess
 import time
-from pathlib import Path
 from typing import Optional
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter
+from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # Pyright severity strings → Severity enum
@@ -114,6 +113,7 @@ class PyrightAdapter(CheckerAdapter):
             stderr=result.stderr,
             duration_ms=duration_ms,
             version=version,
+            cwd=cwd,
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
@@ -154,10 +154,10 @@ class PyrightAdapter(CheckerAdapter):
                 end_obj.get("character", 0) + 1 if end_obj else None
             )
 
-            # Resolve to absolute path (Pyright usually outputs absolute paths,
-            # but normalize defensively)
+            # Pyright prints absolute paths; resolve anyway to normalize
+            # drive-letter case and separators on Windows.
             file_raw: str = diag.get("file", "")
-            file_path = str(Path(file_raw).resolve()) if file_raw else ""
+            file_path = resolve_path(file_raw, raw.cwd) if file_raw else ""
 
             # Store the per-diagnostic dict, not the full generalDiagnostics array.
             raw_str = json.dumps(diag)

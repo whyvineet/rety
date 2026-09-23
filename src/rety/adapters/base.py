@@ -20,9 +20,26 @@ from __future__ import annotations
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 from rety.schema import NormalizedDiagnostic, RawInvocation
+
+
+def resolve_path(file_raw: str, cwd: Optional[str]) -> str:
+    """
+    Resolve a checker-reported path to an absolute, normalized path.
+
+    Relative paths are resolved against `cwd` (the directory the checker
+    subprocess ran in, carried on RawInvocation.cwd), not against the rety
+    process's own working directory. Library callers that pass a different
+    cwd to run_checkers() therefore get correct file paths. With cwd None the
+    process cwd is used.
+    """
+    path = Path(file_raw)
+    if not path.is_absolute() and cwd:
+        path = Path(cwd) / path
+    return str(path.resolve())
 
 
 @dataclass(frozen=True)

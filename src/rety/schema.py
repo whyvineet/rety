@@ -88,9 +88,13 @@ class RawInvocation:
         stderr:       Full stderr text from the checker.
         duration_ms:  Wall-clock time for the subprocess, in milliseconds.
         version:      Detected checker version string, or None if detection failed.
+        cwd:          Working directory the subprocess ran in. Adapters resolve
+                      relative paths in the output against this, so parsing is
+                      correct even when the rety process's own cwd differs.
+                      None means "use the process cwd" (legacy / tests).
     """
 
-    __slots__ = ("checker", "returncode", "stdout", "stderr", "duration_ms", "version")
+    __slots__ = ("checker", "returncode", "stdout", "stderr", "duration_ms", "version", "cwd")
 
     def __init__(
         self,
@@ -100,6 +104,7 @@ class RawInvocation:
         stderr: str,
         duration_ms: float,
         version: Optional[str],
+        cwd: Optional[str] = None,
     ) -> None:
         self.checker = checker
         self.returncode = returncode
@@ -107,6 +112,7 @@ class RawInvocation:
         self.stderr = stderr
         self.duration_ms = duration_ms
         self.version = version
+        self.cwd = cwd
 
     def __repr__(self) -> str:
         return (

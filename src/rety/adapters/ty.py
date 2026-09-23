@@ -50,10 +50,9 @@ import re
 import subprocess
 import time
 import warnings
-from pathlib import Path
 from typing import Optional
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter
+from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # ---------------------------------------------------------------------------
@@ -171,6 +170,7 @@ class TyAdapter(CheckerAdapter):
             stderr=result.stderr,
             duration_ms=duration_ms,
             version=version,
+            cwd=cwd,
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
@@ -200,9 +200,9 @@ class TyAdapter(CheckerAdapter):
             col_raw = int(m.group("col"))
             start_col: Optional[int] = col_raw if col_raw != 0 else None
 
-            # ty prints paths relative to the invocation cwd when given
-            # relative paths; resolve to an absolute path.
-            file_path = str(Path(m.group("file")).resolve())
+            # ty prints paths relative to its cwd when given relative paths;
+            # resolve against the invocation cwd recorded on RawInvocation.
+            file_path = resolve_path(m.group("file"), raw.cwd)
 
             diagnostics.append(
                 NormalizedDiagnostic(
