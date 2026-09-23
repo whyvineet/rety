@@ -1,0 +1,68 @@
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[project]
+name = "rety"
+version = "0.1.0"
+description = "A cross-checker diagnostic comparison tool for Python type checkers"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = [
+    "python",
+    "type-checking",
+    "mypy",
+    "pyright",
+    "pyrefly",
+    "ty",
+    "static-analysis",
+    "diagnostics",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+dependencies = [
+    "click>=8.5.0",
+    "pydantic>=2.13.5",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+rety = "rety.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/whyvineet/rety"
+Repository = "https://github.com/whyvineet/rety"
+Issues = "https://github.com/whyvineet/rety/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
