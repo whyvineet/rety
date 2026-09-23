@@ -98,3 +98,17 @@ def test_output_requires_json_format(fake_registry: dict[str, FakeAdapter], tmp_
 
     assert result.exit_code == 2
     assert "--output is only valid with --format json" in result.stderr
+
+
+def test_duplicate_checker_names_run_once(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--format", "json", "--checker", "mypy,mypy,pyright,MYPY", str(target)]
+    )
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)
+    assert report["checkers_run"] == ["mypy", "pyright"]
+    assert report["total_diagnostics"] == {"mypy": 1, "pyright": 1}

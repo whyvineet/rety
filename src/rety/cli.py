@@ -261,9 +261,13 @@ def _parse_checker_names(checker_str: str) -> list[str]:
     """
     Parse a comma-separated checker name string and validate against ALL_ADAPTERS.
 
+    Names are lower-cased and de-duplicated (first occurrence wins) so
+    `--checker mypy,mypy` runs mypy once rather than twice.
+
     Raises click.BadParameter on unknown checker names.
     """
     names = [name.strip().lower() for name in checker_str.split(",") if name.strip()]
+    names = list(dict.fromkeys(names))
 
     if not names:
         raise click.BadParameter(
