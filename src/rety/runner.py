@@ -34,7 +34,7 @@ Concurrency model:
 from __future__ import annotations
 
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -134,8 +134,10 @@ def run_checkers(
                      are silently skipped — only available ones appear in results.
 
     Returns:
-        List of CheckerResult, one per available adapter that was run.
-        Order is not guaranteed (concurrent execution).
+        List of CheckerResult, one per available adapter that was run, in the
+        same order as `adapters`. Execution is concurrent, but the result
+        order never depends on which checker finished first, so headers and
+        JSON reports are stable from run to run.
 
     Raises:
         CheckerUnavailableError: If require_all=True and any adapter is unavailable.
@@ -154,20 +156,16 @@ def run_checkers(
     if not available:
         return []
 
-    results: list[CheckerResult] = []
-
     with ThreadPoolExecutor(
         max_workers=len(available),
         thread_name_prefix="rety-checker",
     ) as executor:
-        future_to_adapter = {
-            executor.submit(_run_one, adapter, paths, effective_cwd): adapter
+        futures = [
+            executor.submit(_run_one, adapter, paths, effective_cwd)
             for adapter in available
-        }
-        for future in as_completed(future_to_adapter):
-            results.append(future.result())
-
-    return results
+        ]
+        # Collect in submission order, not completion order.
+        return [future.result() for future in futures]
 
 
 def _run_one(
