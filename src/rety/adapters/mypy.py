@@ -4,28 +4,35 @@ mypy adapter for rety.
 Invocation:
     mypy --output=json --no-incremental --cache-dir=<tempdir> <paths>
 
-Output format:
-    JSON-lines (one JSON object per line, NOT a single JSON document).
-    Schema per line: file, line, column, end_line, end_column, message, hint,
-                     code, severity.
-    Lines are 1-indexed. Columns are 1-indexed.
+Output format (verified against mypy 2.3.1 on 2026-09-24):
+    JSON-lines (one JSON object per line, NOT a single JSON document):
+
+        {"file": "tests/fixtures/basic_errors.py", "line": 9, "column": 11,
+         "end_line": 9, "end_column": 15,
+         "message": "Incompatible return value type (got \\"str\\", expected \\"int\\")",
+         "hint": null, "code": "return-value", "severity": "error"}
+
+    - line and end_line are 1-indexed.
+    - column is 0-indexed (mypy's text output adds 1 for display; the JSON
+      does not). end_column is a 0-indexed exclusive end. rety converts both
+      to 1-indexed, so mypy and Pyright report the same token at the same
+      column. A negative column means "unknown" and becomes None.
+    - Paths are relative to the invocation cwd when relative paths are given.
+    - "Success: no issues found" and "Found N errors" go to stderr, so stdout
+      is pure JSON-lines.
+
+    Real captured output lives in tests/fixtures/captured/mypy/.
 
 Known issues handled here:
-    1. Syntax errors: mypy falls back to plain-text output even under --output=json
-       (open bug as of 1.20.x). The parser wraps every json.loads in try/except
-       and emits a RuntimeWarning for each non-JSON line, rather than crashing.
+    1. Syntax errors: older mypy releases (1.x) fell back to plain-text output
+       for syntax errors even under --output=json (mypy bug #17660). mypy 2.x
+       emits JSON with code "syntax". The parser still wraps every json.loads
+       in try/except and emits a RuntimeWarning for non-JSON lines, so older
+       versions degrade gracefully.
 
-    2. Stale-cache flag override: passing --no-incremental and an ephemeral
-       --cache-dir sidesteps this entirely. A stale .mypy_cache from a prior
-       invocation with different flags can silently override --output, which would
-       make the JSON output disappear without warning. Using a fresh tempdir per
-       invocation removes this failure class.
-
-Phase 0 note:
-    Verify whether mypy's --cache-dir respects the working directory or requires
-    an absolute path. Also verify: does --no-incremental fully suppress all cache
-    state, or only flag-inheritance? Check against pinned version in
-    tests/CHECKER_VERSIONS.md.
+    2. Stale-cache flag override: a stale .mypy_cache from a prior invocation
+       with different flags can silently override --output. Passing
+       --no-incremental and an ephemeral --cache-dir sidesteps this entirely.
 """
 
 from __future__ import annotations
@@ -36,7 +43,7 @@ import tempfile
 import time
 import warnings
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -69,7 +76,7 @@ class MypyAdapter(CheckerAdapter):
         """
         Run `mypy --version` and parse the version string.
 
-        mypy --version output format: "mypy 1.11.2 (compiled: yes)"
+        mypy --version output format: "mypy 2.3.1 (compiled: yes)"
         """
         try:
             result = subprocess.run(
@@ -79,7 +86,6 @@ class MypyAdapter(CheckerAdapter):
                 timeout=10,
             )
             if result.returncode == 0:
-                # "mypy 1.11.2 (compiled: yes)" → ["mypy", "1.11.2", "(compiled:", "yes)"]
                 parts = result.stdout.strip().split()
                 if len(parts) >= 2:
                     return parts[1]
@@ -91,14 +97,14 @@ class MypyAdapter(CheckerAdapter):
         """
         Invoke mypy with --no-incremental and an ephemeral cache directory.
 
-        --no-incremental: disables mypy's incremental mode so it never reads
-        from or writes to its normal .mypy_cache. This prevents the known bug
-        where a stale cache from a prior invocation with different flags can
-        silently override --output and cause the JSON stream to disappear.
+        --no-incremental disables mypy's incremental mode so it never reads
+        from or writes to its normal .mypy_cache. This prevents a stale cache
+        from a prior invocation with different flags from silently overriding
+        --output and making the JSON stream disappear.
 
-        --cache-dir=<tempdir>: belt-and-suspenders. Even with --no-incremental,
-        using a fresh tempdir per invocation prevents any cross-invocation
-        state leakage in long-lived CI runners.
+        --cache-dir=<tempdir> is belt-and-suspenders: a fresh tempdir per
+        invocation prevents any cross-invocation state leakage on long-lived
+        CI runners.
         """
         version = self.detect_version()
         start = time.monotonic()
@@ -127,9 +133,8 @@ class MypyAdapter(CheckerAdapter):
         """
         Parse mypy JSON-lines output into NormalizedDiagnostic instances.
 
-        Handles the known syntax-error fallback: mypy emits plain-text lines
-        (not JSON) for syntax errors even under --output=json. Each non-JSON
-        line is skipped with a RuntimeWarning rather than crashing.
+        Non-JSON lines (the syntax-error plain-text fallback of older mypy
+        versions) are skipped with a RuntimeWarning rather than crashing.
         """
         diagnostics: list[NormalizedDiagnostic] = []
         skipped_lines: list[str] = []
@@ -142,20 +147,17 @@ class MypyAdapter(CheckerAdapter):
             try:
                 obj = json.loads(line)
             except json.JSONDecodeError:
-                # mypy known bug: syntax errors produce plain-text output
-                # even under --output=json. Skip and accumulate for warning.
                 skipped_lines.append(line[:120])  # truncate long lines in warning
                 continue
 
-            severity_str = obj.get("severity", "error").lower()
+            severity_str = str(obj.get("severity", "error")).lower()
             severity = _SEVERITY_MAP.get(severity_str, Severity.error)
 
-            # mypy uses 1-indexed lines and columns.
-            # Treat 0 as None (missing data, not column 0).
-            start_line: int = obj.get("line", 1)
-            start_col: Optional[int] = _none_if_zero(obj.get("column"))
-            end_line: Optional[int] = _none_if_zero(obj.get("end_line"))
-            end_col: Optional[int] = _none_if_zero(obj.get("end_column"))
+            # Lines are 1-indexed; columns are 0-indexed and converted here.
+            start_line: int = max(_as_int(obj.get("line"), default=1), 1)
+            start_col: Optional[int] = _col_to_1indexed(obj.get("column"))
+            end_line: Optional[int] = _line_or_none(obj.get("end_line"))
+            end_col: Optional[int] = _col_to_1indexed(obj.get("end_column"))
 
             # Resolve relative paths against the Python process CWD.
             # (mypy outputs relative paths when invoked with relative path args.)
@@ -181,8 +183,8 @@ class MypyAdapter(CheckerAdapter):
         if skipped_lines:
             warnings.warn(
                 f"mypy adapter: {len(skipped_lines)} non-JSON line(s) skipped "
-                f"(likely syntax-error plain-text fallback; mypy bug #17660). "
-                f"First skipped: {skipped_lines[0]!r}",
+                f"(likely the syntax-error plain-text fallback of mypy < 2.0; "
+                f"mypy bug #17660). First skipped: {skipped_lines[0]!r}",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -190,8 +192,38 @@ class MypyAdapter(CheckerAdapter):
         return diagnostics
 
 
-def _none_if_zero(value: Optional[int]) -> Optional[int]:
-    """Return None if value is 0 or None, else return value unchanged."""
-    if value is None or value == 0:
+def _as_int(value: Any, default: int) -> int:
+    """Coerce to int, returning default for None or non-numeric values."""
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _col_to_1indexed(value: Any) -> Optional[int]:
+    """
+    Convert mypy's 0-indexed column to 1-indexed.
+
+    None or a negative value means mypy did not know the column → None.
+    0 is a real position (start of line) and becomes 1.
+    """
+    if value is None or isinstance(value, bool):
         return None
-    return value
+    try:
+        v = int(value)
+    except (ValueError, TypeError):
+        return None
+    return v + 1 if v >= 0 else None
+
+
+def _line_or_none(value: Any) -> Optional[int]:
+    """Return a 1-indexed line as-is; None for missing, non-numeric, or < 1."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        v = int(value)
+    except (ValueError, TypeError):
+        return None
+    return v if v >= 1 else None

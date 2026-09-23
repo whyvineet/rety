@@ -1,1 +1,2 @@
-{"file": "tests/fixtures/untyped_function.py", "line": 22, "column": 10, "end_line": 22, "end_column": 33, "severity": "error", "message": "Unsupported operand types for + (\"str\" and \"int\")", "code": "operator", "hint": null}
+{"file": "tests\\fixtures\\untyped_function.py", "line": 20, "column": 0, "end_line": 21, "end_column": 16, "message": "Function is missing a type annotation", "hint": null, "code": "no-untyped-def", "severity": "error"}
+{"file": "tests\\fixtures\\untyped_function.py", "line": 24, "column": 9, "end_line": 24, "end_column": 31, "message": "Call to untyped function \"add_items\" in typed context", "hint": null, "code": "no-untyped-call", "severity": "error"}
