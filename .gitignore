@@ -67,3 +67,6 @@ venv.bak/
 .dmypy.json
 dmypy.json
 .ruff_cache/
+
+# Checker venv suggested by tests/CHECKER_VERSIONS.md
+.venv*/
