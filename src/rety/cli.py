@@ -43,6 +43,27 @@ def main() -> None:
     Run multiple type checkers on the same Python code and compare their
     diagnostic output. See 'rety check --help' for usage.
     """
+    _ensure_utf8_streams()
+
+
+def _ensure_utf8_streams() -> None:
+    """
+    Make stdout/stderr UTF-8 capable.
+
+    On Windows, a redirected or piped stdout defaults to the ANSI code page
+    (cp1252), which cannot encode the box-drawing and arrow glyphs the
+    terminal renderer uses and would raise UnicodeEncodeError. Reconfiguring
+    is a no-op on streams that are already UTF-8.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        encoding = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+        if reconfigure is None or encoding == "utf8":
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
 
 
 # ---------------------------------------------------------------------------

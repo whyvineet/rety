@@ -259,11 +259,16 @@ def _render_diagnostic_line(con: Console, diag: NormalizedDiagnostic) -> None:
     code_suffix = f" [dim]{rich_escape(f'[{diag.code}]')}[/]" if diag.code else ""
     col_hint = f":{diag.start_col}" if diag.start_col is not None else ""
 
+    # Pyright (and sometimes Pyrefly) emit multi-line messages with embedded
+    # newlines and non-breaking spaces; fold them onto one line so the
+    # columnar layout survives. The raw field keeps the original text.
+    message = " ".join(diag.message.split())
+
     con.print(
         f"      [{checker_style}]{diag.checker:<10}[/]"
         f"[{sev_style}]{diag.severity.value:<9}[/]"
         f"[dim]{diag.start_line}{col_hint}[/]  "
-        f"{rich_escape(diag.message)}{code_suffix}"
+        f"{rich_escape(message)}{code_suffix}"
     )
 
 
