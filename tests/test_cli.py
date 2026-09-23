@@ -23,7 +23,7 @@ def fake_registry(monkeypatch: pytest.MonkeyPatch) -> dict[str, FakeAdapter]:
         "pyright": FakeAdapter("pyright"),
         "pyrefly": FakeAdapter("pyrefly", available=False),
     }
-    registry = {name: (lambda inst=inst: inst) for name, inst in instances.items()}
+    registry = {name: (lambda inst=inst, **_kw: inst) for name, inst in instances.items()}
     monkeypatch.setattr(cli, "ALL_ADAPTERS", registry)
     return instances
 

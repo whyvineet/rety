@@ -151,15 +151,24 @@ def run_checkers(
         CheckerUnavailableError: If require_all=True and any adapter is unavailable.
     """
     effective_cwd = cwd if cwd is not None else os.getcwd()
+    if not adapters:
+        return []
 
-    # Partition into available / unavailable before spawning threads
+    # Probe availability concurrently: each probe is a `--version` subprocess
+    # and Pyright's can take a second or more.
+    with ThreadPoolExecutor(
+        max_workers=len(adapters),
+        thread_name_prefix="rety-probe",
+    ) as executor:
+        availability = list(executor.map(lambda a: a.is_available(), adapters))
+
     available: list[CheckerAdapter] = []
-    for adapter in adapters:
-        if adapter.is_available():
+    for adapter, is_available in zip(adapters, availability):
+        if is_available:
             available.append(adapter)
         elif require_all:
             raise CheckerUnavailableError(adapter.name)
-        # else: silently skip — caller can see which adapters are absent from results
+        # else: skip — the CLI reports which adapters are absent from results
 
     if not available:
         return []

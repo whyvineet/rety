@@ -5,6 +5,7 @@ No real type checker is invoked.
 
 from __future__ import annotations
 
+import subprocess
 import time
 from typing import Optional
 
@@ -23,11 +24,16 @@ class FakeAdapter(CheckerAdapter):
         available: bool = True,
         delay: float = 0.0,
         fail: bool = False,
+        timeout_after: Optional[float] = None,
+        timeout: Optional[float] = None,
     ) -> None:
+        super().__init__(timeout=timeout)
         self._name = name
         self._available = available
         self._delay = delay
         self._fail = fail
+        self._timeout_after = timeout_after
+        self.version_calls = 0
         self.seen_cwd: Optional[str] = None
         self.seen_paths: list[str] = []
 
@@ -40,12 +46,16 @@ class FakeAdapter(CheckerAdapter):
         return AdapterCapabilities()
 
     def detect_version(self) -> Optional[str]:
+        self.version_calls += 1
         return "1.0" if self._available else None
 
     def run(self, paths: list[str], cwd: str) -> RawInvocation:
+        self.version()  # real adapters record the version on the invocation
         self.seen_cwd = cwd
         self.seen_paths = list(paths)
         time.sleep(self._delay)
+        if self._timeout_after is not None:
+            raise subprocess.TimeoutExpired(cmd=[self._name], timeout=self._timeout_after)
         if self._fail:
             raise RuntimeError(f"{self._name} exploded")
         return RawInvocation(
@@ -112,3 +122,18 @@ def test_cwd_and_paths_are_passed_through() -> None:
 
     assert adapter.seen_cwd == "/some/project"
     assert adapter.seen_paths == ["pkg", "tests"]
+
+
+def test_version_is_probed_once_per_adapter() -> None:
+    """is_available() and run() share one memoized --version probe."""
+    adapter = FakeAdapter("a")
+    run_checkers([adapter], paths=["src"], cwd="/tmp")
+    assert adapter.version_calls == 1
+
+
+def test_timeout_is_reported_as_error_not_crash() -> None:
+    results = run_checkers([FakeAdapter("slow", timeout_after=5)], paths=["src"], cwd="/tmp")
+    (r,) = results
+    assert not r.succeeded
+    assert "timed out" in str(r.error)
+    assert r.diagnostics == []

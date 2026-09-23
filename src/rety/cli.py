@@ -128,6 +128,14 @@ def _ensure_utf8_streams() -> None:
     default=False,
     help="Exit with error if any selected checker is not installed.",
 )
+@click.option(
+    "--timeout",
+    type=click.FloatRange(min=0),
+    default=600.0,
+    show_default=True,
+    metavar="SECONDS",
+    help="Seconds to wait for each checker before giving up on it. 0 = no limit.",
+)
 def check(
     paths: tuple[str, ...],
     checker: str,
@@ -136,6 +144,7 @@ def check(
     line_tolerance: int,
     verbose: bool,
     require_all: bool,
+    timeout: float,
 ) -> None:
     """Run type checkers on PATH(s) and compare their diagnostics.
 
@@ -162,7 +171,7 @@ def check(
 
     # Parse and validate checker names
     checker_names = _parse_checker_names(checker)
-    adapters = [ALL_ADAPTERS[name]() for name in checker_names]
+    adapters = [ALL_ADAPTERS[name](timeout=timeout or None) for name in checker_names]
 
     # Run checkers concurrently
     try:

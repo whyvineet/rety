@@ -87,7 +87,7 @@ class PyrightAdapter(CheckerAdapter):
                 ["pyright", "--version"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
                 parts = result.stdout.strip().split()
@@ -99,7 +99,7 @@ class PyrightAdapter(CheckerAdapter):
 
     def run(self, paths: list[str], cwd: str) -> RawInvocation:
         """Invoke Pyright with --outputjson."""
-        version = self.detect_version()
+        version = self.version()
         start = time.monotonic()
 
         cmd = ["pyright", "--outputjson", *paths]

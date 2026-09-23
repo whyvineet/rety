@@ -81,12 +81,27 @@ class CheckerAdapter(ABC):
     to the shared schema in rety.schema.
 
     Lifecycle per rety run:
-        1. is_available() — detect_version() returns non-None
+        1. is_available() — version() returns non-None
         2. run(paths, cwd) — invoke the checker subprocess
         3. parse(raw) — parse raw output into normalized diagnostics
 
-    Adapters must be stateless — instantiated once, usable multiple times.
+    Adapters hold only configuration (the subprocess timeout) and a memoized
+    version string. They can be reused across runs.
     """
+
+    #: Seconds to wait for the checker subprocess in run(). None = no limit.
+    timeout: Optional[float] = None
+
+    #: Seconds to wait for a `--version` probe before treating the checker as
+    #: unavailable. Generous because Pyright's node startup can be slow on a
+    #: loaded machine.
+    version_probe_timeout: float = 30.0
+
+    _version_cache: Optional[str] = None
+    _version_probed: bool = False
+
+    def __init__(self, timeout: Optional[float] = None) -> None:
+        self.timeout = timeout
 
     @property
     @abstractmethod
@@ -150,28 +165,42 @@ class CheckerAdapter(ABC):
         """
         ...
 
+    def version(self) -> Optional[str]:
+        """
+        detect_version(), memoized per instance.
+
+        The runner calls is_available() and run() calls version(); without
+        memoization every checker would be probed twice per rety run.
+        """
+        if not self._version_probed:
+            self._version_cache = self.detect_version()
+            self._version_probed = True
+        return self._version_cache
+
     def is_available(self) -> bool:
         """Return True if this checker is installed and detectable."""
-        return self.detect_version() is not None
+        return self.version() is not None
 
     def _run_subprocess(
         self,
         cmd: list[str],
         cwd: str,
         *,
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
     ) -> subprocess.CompletedProcess[str]:
         """
         Shared subprocess runner used by concrete adapters.
 
         Captures stdout and stderr as text. Does not raise on non-zero
         returncode — type checkers exit non-zero when diagnostics are found,
-        which is expected and normal.
+        which is expected and normal. Raises subprocess.TimeoutExpired if the
+        checker exceeds `timeout` (default: self.timeout); the runner turns
+        that into a CheckerResult.error.
         """
         return subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             cwd=cwd,
-            timeout=timeout,
+            timeout=timeout if timeout is not None else self.timeout,
         )

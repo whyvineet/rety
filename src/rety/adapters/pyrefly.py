@@ -92,7 +92,7 @@ class PyreflyAdapter(CheckerAdapter):
                 ["pyrefly", "--version"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
                 parts = result.stdout.strip().split()
@@ -105,7 +105,7 @@ class PyreflyAdapter(CheckerAdapter):
 
     def run(self, paths: list[str], cwd: str) -> RawInvocation:
         """Invoke Pyrefly with --output-format json."""
-        version = self.detect_version()
+        version = self.version()
         start = time.monotonic()
 
         cmd = ["pyrefly", "check", "--output-format", "json", *paths]

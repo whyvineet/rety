@@ -126,7 +126,7 @@ class TyAdapter(CheckerAdapter):
                 ["ty", "version", "--output-format", "json"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=self.version_probe_timeout,
             )
             if result.returncode == 0 and result.stdout.strip():
                 doc = json.loads(result.stdout)
@@ -141,7 +141,7 @@ class TyAdapter(CheckerAdapter):
                 ["ty", "version"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
                 # "ty 0.0.83 (9c214798c 2026-09-21)"
@@ -156,7 +156,7 @@ class TyAdapter(CheckerAdapter):
 
     def run(self, paths: list[str], cwd: str) -> RawInvocation:
         """Invoke ty with --output-format concise."""
-        version = self.detect_version()
+        version = self.version()
         start = time.monotonic()
 
         cmd = ["ty", "check", "--output-format", "concise", *paths]

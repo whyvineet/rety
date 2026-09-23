@@ -82,7 +82,7 @@ class MypyAdapter(CheckerAdapter):
                 ["mypy", "--version"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
                 parts = result.stdout.strip().split()
@@ -105,7 +105,7 @@ class MypyAdapter(CheckerAdapter):
         invocation prevents any cross-invocation state leakage on long-lived
         CI runners.
         """
-        version = self.detect_version()
+        version = self.version()
         start = time.monotonic()
 
         with tempfile.TemporaryDirectory(prefix="rety_mypy_cache_") as cache_dir:
