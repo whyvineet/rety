@@ -320,22 +320,36 @@ def _score_cluster(members: list[NormalizedDiagnostic]) -> tuple[Confidence, lis
     Assign a confidence level and produce alignment signals for a cluster.
 
     Confidence rules:
-        HIGH   — at least one pair with exactly matching line ranges
-        MEDIUM — at least one pair with overlapping ranges (but not exact)
-        LOW    — all merges were via AST node context, or single-checker cluster
+        HIGH   — at least one cross-checker pair with exactly matching line ranges
+        MEDIUM — at least one cross-checker pair with overlapping ranges (not exact)
+        LOW    — all cross-checker merges were via AST node context, or the
+                 cluster contains diagnostics from a single checker only
 
-    Alignment signals explain exactly how each pair was matched.
+    Only pairs from *different* checkers count. Two diagnostics from the same
+    checker on the same line say nothing about agreement between checkers, so
+    they never raise confidence and never produce a pairwise signal.
+
+    Alignment signals explain exactly how each cross-checker pair was matched.
     """
     signals: list[str] = []
 
-    if len(members) == 1:
-        signals.append(f"single diagnostic from {members[0].checker}")
+    checkers = sorted({d.checker for d in members})
+    if len(checkers) == 1:
+        if len(members) == 1:
+            signals.append(f"single diagnostic from {members[0].checker}")
+        else:
+            signals.append(
+                f"{len(members)} diagnostics from {checkers[0]} only; "
+                f"no other checker reported here"
+            )
         return Confidence.LOW, signals
 
     has_exact = False
     has_overlap = False
 
     for d1, d2 in itertools.combinations(members, 2):
+        if d1.checker == d2.checker:
+            continue  # same-checker pairs carry no cross-checker evidence
         r1 = _effective_range(d1)
         r2 = _effective_range(d2)
 

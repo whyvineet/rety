@@ -467,3 +467,42 @@ def test_no_verdict_field_exists() -> None:
             f"DiagnosticCluster must not have a '{field_name}' field. "
             f"The tool reports evidence, not conclusions."
         )
+
+
+# ---------------------------------------------------------------------------
+# 9. Confidence counts only cross-checker evidence
+# ---------------------------------------------------------------------------
+
+
+def test_two_diagnostics_from_same_checker_are_low_confidence() -> None:
+    """Two mypy diagnostics on one line agree with nobody: LOW, not HIGH."""
+    diagnostics = [
+        diag("mypy", 10, message="first"),
+        diag("mypy", 10, message="second"),
+    ]
+    clusters = align(diagnostics)
+
+    assert len(clusters) == 1
+    c = clusters[0]
+    assert c.checkers_present == ["mypy"]
+    assert c.confidence == Confidence.LOW
+    assert not any("exact range" in s for s in c.alignment_signals)
+
+
+def test_same_checker_exact_pair_does_not_inflate_mixed_cluster() -> None:
+    """
+    mypy reports L10-12 twice (exact pair with itself) and Pyright reports
+    L11-15 (overlap only). The cross-checker evidence is an overlap, so the
+    cluster is MEDIUM. The same-checker exact pair must not make it HIGH.
+    """
+    diagnostics = [
+        diag("mypy", 10, 12, message="a"),
+        diag("mypy", 10, 12, message="b"),
+        diag("pyright", 11, 15),
+    ]
+    clusters = align(diagnostics)
+
+    assert len(clusters) == 1
+    c = clusters[0]
+    assert c.confidence == Confidence.MEDIUM
+    assert not any("mypy ↔ mypy" in s for s in c.alignment_signals)
