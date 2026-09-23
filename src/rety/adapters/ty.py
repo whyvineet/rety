@@ -4,52 +4,43 @@ ty adapter for rety.
 Invocation:
     ty check --output-format concise <paths>
 
-Output format:
-    ty (Astral, pre-1.0 as of September 2026) has no JSON or SARIF diagnostic
-    output as of the current CLI reference (docs dated Sept 21, 2026). This
-    adapter uses --output-format concise, which emits one diagnostic per line.
+Output format (verified against ty 0.0.83 on 2026-09-24):
+    One diagnostic per line on stdout:
 
-    ⚠ FORMAT UNVERIFIED AGAINST REAL OUTPUT — READ BEFORE EDITING ⚠
-    The regex in this file was derived from ty's documented format description
-    ("print diagnostics concisely, one per line"), not from captured real bytes.
-    Before relying on this parser in production:
+        <path>:<line>:<col>: <severity>[<rule>] <message>
 
-        1. Run: ty check --output-format concise tests/fixtures/untyped_function.py
-        2. Save the exact output to: tests/fixtures/captured/ty/untyped_function.txt
-        3. Verify that _CONCISE_RE matches every line
-        4. Update the regex and this docstring accordingly
+    For example:
 
-    This is explicitly a Phase 1 task.
+        tests/fixtures/basic_errors.py:9:12: error[invalid-return-type] Return type does not match returned value: expected `int`, found `str`
+
+    Lines and columns are 1-indexed. There is no end position. After the
+    diagnostics ty prints a summary line on stdout ("Found 3 diagnostics" or
+    "All checks passed!"), which the parser skips.
+
+    ty has no JSON diagnostic format that carries positions in a checker-
+    neutral shape (``--output-format gitlab`` is GitLab Code Quality JSON;
+    ``github`` and ``junit`` are CI-oriented). ``concise`` is the most direct
+    format for this adapter. Real captured output lives in
+    tests/fixtures/captured/ty/.
 
 Structured commands used:
-    detect_version(): `ty version --output-format json`
-        ty provides structured JSON for version information, so no text parsing
-        is needed for version detection. This is the correct approach.
+    detect_version(): ``ty version --output-format json`` returns
+    ``{"version": "0.0.83", "commit_info": {...}}``. Falls back to plain
+    ``ty version`` ("ty 0.0.83 (9c214798c 2026-09-21)").
 
     Future crosswalk (v0.2):
-        `ty explain rule --output-format json <code>`
-        Returns machine-readable rule descriptions. Use this as the data source
-        when building the error-code crosswalk table, rather than scraping docs.
+        ``ty explain rule --output-format json <code>`` returns machine-
+        readable rule descriptions.
 
 Capabilities:
-    has_end_col = False  (concise format: no end position)
-    has_codes   = True   ([code] suffix is present on most diagnostics)
+    has_end_col = False  (concise format has no end position)
+    has_codes   = True   (the [rule] suffix is present on every diagnostic)
     uses_json   = False  (diagnostic output is text)
     uses_text_parser = True
 
-Future-proofing:
-    When ty adds --output-format json (likely, given Astral's pattern with ruff
-    and other tools), the migration path is:
-    1. Add a JSON parser method to TyAdapter
-    2. Update run() to pass --output-format json
-    3. Update capabilities (has_end_col=True, uses_json=True, uses_text_parser=False)
-    4. Deprecate _parse_concise (keep for older ty versions behind a version check)
-    This adapter is isolated precisely to make that a one-file change.
-
 Cache behavior:
-    ty does not appear to have file-system incremental caching that could leak
-    flags across rety invocations (it uses Salsa in-memory incremental computation).
-    Verify in Phase 0 for any CI-specific state.
+    ty keeps its incremental state in memory (Salsa); there is no on-disk
+    cache that could leak flags between rety invocations.
 """
 
 from __future__ import annotations
@@ -68,30 +59,32 @@ from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 # ---------------------------------------------------------------------------
 # ty concise format regex
 #
-# ⚠ UNVERIFIED AGAINST REAL OUTPUT — SEE MODULE DOCSTRING ⚠
-#
-# Assumed format from ty docs: file:line:col: severity message [code]
-# Example (assumed): src/foo.py:10:5: error Missing return statement [return-value]
+# Verified against real output (tests/fixtures/captured/ty/basic_errors.txt):
+#   tests/fixtures/basic_errors.py:9:12: error[invalid-return-type] Return type ...
 #
 # Named groups:
-#   file     — path (may contain colons on Windows, but MVP is Linux/macOS)
+#   file     — path; non-greedy so a Windows drive-letter colon stays in the path
 #   line     — 1-indexed line number
 #   col      — 1-indexed column number
-#   severity — "error", "warning", "note", "info" (verify exact vocab in Phase 1)
-#   message  — diagnostic message text
-#   code     — rule name in brackets, optional
+#   severity — "error", "warning", "note", "info"/"information"
+#   code     — rule name in the brackets directly after the severity (optional,
+#              so a future code-less line still parses)
+#   message  — the rest of the line
 # ---------------------------------------------------------------------------
 _CONCISE_RE = re.compile(
-    r"^(?P<file>.+?)"                               # file path (non-greedy)
-    r":(?P<line>\d+)"                               # :line
-    r":(?P<col>\d+)"                                # :col
-    r":\s+"                                         # ": "
-    r"(?P<severity>error|warning|note|info(?:rmation)?)"  # severity keyword
-    r"\s+"                                          # space
-    r"(?P<message>.+?)"                             # message (non-greedy)
-    r"(?:\s+\[(?P<code>[^\]]+)\])?"                 # optional [code]
-    r"\s*$"                                         # end of line
+    r"^(?P<file>.+?)"
+    r":(?P<line>\d+)"
+    r":(?P<col>\d+)"
+    r":\s+"
+    r"(?P<severity>error|warning|note|info(?:rmation)?)"
+    r"(?:\[(?P<code>[^\]]+)\])?"
+    r":?\s*"
+    r"(?P<message>.*?)"
+    r"\s*$"
 )
+
+# Summary lines ty prints on stdout after the diagnostics. Not diagnostics.
+_SUMMARY_RE = re.compile(r"^(All checks passed!|Found \d+ diagnostics?)$")
 
 _SEVERITY_MAP: dict[str, Severity] = {
     "error": Severity.error,
@@ -106,9 +99,8 @@ class TyAdapter(CheckerAdapter):
     """
     Adapter for ty (https://github.com/astral-sh/ty).
 
-    The load-bearing fact about ty: no JSON output as of September 2026.
-    This adapter is a first-class text-format parser, not a stub or workaround.
-    See module docstring for full context.
+    ty has no positional JSON output, so this adapter is a first-class text
+    parser for the ``concise`` format. See the module docstring.
     """
 
     @property
@@ -118,20 +110,18 @@ class TyAdapter(CheckerAdapter):
     @property
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities(
-            has_end_col=False,    # concise format has no end position
-            has_codes=True,       # [code] suffix present on most diagnostics
-            uses_json=False,      # diagnostic output is text, not JSON
+            has_end_col=False,
+            has_codes=True,
+            uses_json=False,
             uses_text_parser=True,
         )
 
     def detect_version(self) -> Optional[str]:
         """
-        Use `ty version --output-format json` for structured version detection.
+        Use ``ty version --output-format json`` for structured version detection.
 
-        ty provides machine-readable JSON for version info — use it rather than
-        parsing plain text. Falls back to plain `ty version` if JSON fails.
+        Falls back to plain ``ty version`` if the JSON form fails.
         """
-        # Primary: structured JSON output
         try:
             result = subprocess.run(
                 ["ty", "version", "--output-format", "json"],
@@ -147,7 +137,6 @@ class TyAdapter(CheckerAdapter):
         except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
             pass
 
-        # Fallback: plain text `ty version`
         try:
             result = subprocess.run(
                 ["ty", "version"],
@@ -156,7 +145,7 @@ class TyAdapter(CheckerAdapter):
                 timeout=10,
             )
             if result.returncode == 0:
-                # Assumed format: "ty 0.0.7" (verify in Phase 0)
+                # "ty 0.0.83 (9c214798c 2026-09-21)"
                 parts = result.stdout.strip().split()
                 if len(parts) >= 2:
                     return parts[1]
@@ -185,23 +174,20 @@ class TyAdapter(CheckerAdapter):
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
-        """Parse ty's concise text output."""
-        return self._parse_concise(raw)
-
-    def _parse_concise(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
         """
-        Parse ty's --output-format concise text output line by line.
+        Parse ty's ``--output-format concise`` text output line by line.
 
-        ⚠ The regex was derived from ty's documented format description, not
-        from verified real output. If unmatched lines are seen, update _CONCISE_RE
-        after capturing real ty output in tests/fixtures/captured/ty/.
+        Summary lines ("Found N diagnostics", "All checks passed!") are
+        skipped silently. Any other line that does not match the concise
+        format is skipped with a RuntimeWarning so a format change in a new
+        ty release is visible rather than silent.
         """
         diagnostics: list[NormalizedDiagnostic] = []
         unmatched: list[str] = []
 
         for line in raw.stdout.splitlines():
             stripped = line.strip()
-            if not stripped:
+            if not stripped or _SUMMARY_RE.match(stripped):
                 continue
 
             m = _CONCISE_RE.match(stripped)
@@ -209,16 +195,14 @@ class TyAdapter(CheckerAdapter):
                 unmatched.append(stripped[:120])
                 continue
 
-            severity_str = m.group("severity").lower()
-            severity = _SEVERITY_MAP.get(severity_str, Severity.error)
+            severity = _SEVERITY_MAP.get(m.group("severity").lower(), Severity.error)
 
             col_raw = int(m.group("col"))
             start_col: Optional[int] = col_raw if col_raw != 0 else None
 
-            # Resolve relative paths (ty outputs relative paths when invoked with
-            # relative paths — this is typical for concise text-format tools)
-            file_raw = m.group("file")
-            file_path = str(Path(file_raw).resolve())
+            # ty prints paths relative to the invocation cwd when given
+            # relative paths; resolve to an absolute path.
+            file_path = str(Path(m.group("file")).resolve())
 
             diagnostics.append(
                 NormalizedDiagnostic(
@@ -227,8 +211,8 @@ class TyAdapter(CheckerAdapter):
                     file=file_path,
                     start_line=int(m.group("line")),
                     start_col=start_col,
-                    end_line=None,   # concise format has no end position
-                    end_col=None,    # concise format has no end position
+                    end_line=None,  # concise format has no end position
+                    end_col=None,
                     severity=severity,
                     code=m.group("code") or None,
                     message=m.group("message").strip(),
@@ -240,7 +224,7 @@ class TyAdapter(CheckerAdapter):
             warnings.warn(
                 f"ty adapter: {len(unmatched)} line(s) did not match the concise "
                 f"format regex (_CONCISE_RE in rety/adapters/ty.py). "
-                f"This likely means the regex needs updating for your ty version. "
+                f"This likely means the format changed in your ty version. "
                 f"Capture real ty output in tests/fixtures/captured/ty/ and update "
                 f"_CONCISE_RE. First unmatched line: {unmatched[0]!r}",
                 RuntimeWarning,

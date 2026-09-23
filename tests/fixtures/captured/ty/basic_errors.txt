@@ -1,0 +1,4 @@
+tests\fixtures\basic_errors.py:9:12: error[invalid-return-type] Return type does not match returned value: expected `int`, found `str`
+tests\fixtures\basic_errors.py:12:10: error[invalid-assignment] Object of type `Literal["a"]` is not assignable to `int`
+tests\fixtures\basic_errors.py:13:5: error[unresolved-reference] Name `undefined_name` used when not defined
+Found 3 diagnostics
