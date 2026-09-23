@@ -1,24 +1,25 @@
-# rety fixture: untyped_function.py
-#
-# Demonstrates the core mypy-vs-others inference gap:
-# mypy (by default, without --check-untyped-defs) skips the body of unannotated
-# functions entirely. Pyright, Pyrefly, and ty infer types aggressively and flag
-# issues even in unannotated code.
-#
-# Expected disagreement pattern:
-#   mypy:    0 errors on add_items body (skips unannotated functions by default)
-#            1 error on line 10 (call-site: Unsupported operand types for +)
-#   pyright: error on line 3 (or 10, depending on inference) — str + int
-#   pyrefly: error on line 3 (or 10) — similar to pyright
-#   ty:      error on line 3 (or 10) — similar to pyright
-#
-# The exact line numbers depend on whether each checker blames the function body
-# or the call site. This is precisely the kind of adjacent-range disagreement
-# the alignment engine's AST-node merge pass is designed to handle.
+"""rety fixture: untyped_function.py
+
+Demonstrates the core inference gap around unannotated functions. What each
+checker reports here depends heavily on its configuration:
+
+- mypy skips the body of an unannotated function by default and reports
+  nothing. With strict settings (as in this repository's pyproject.toml) it
+  reports the missing annotation on the def and the untyped call.
+- Pyright, Pyrefly and ty infer through the unannotated body. In practice
+  none of them flags the str + int call below, because ``x + y`` on unknown
+  operands is accepted. Pyrefly with strict-style settings reports the
+  missing parameter and return annotations instead.
+
+Do not start a comment line with a checker name followed by a colon: Pyright
+parses ``# pyright:`` comments as directives and reports unknown ones.
+Real captured output lives in tests/fixtures/captured/<checker>/.
+"""
+
 
 def add_items(x, y):
-    return x + y  # no type annotations — mypy skips this body by default
+    return x + y  # no type annotations
 
 
-result = add_items("hello", 42)  # str + int: type error at the call site
+result = add_items("hello", 42)  # str + int at the call site
 print(result)
