@@ -8,6 +8,11 @@ Agreement language always uses N/M where:
 M is never hardcoded as 4. A run with --checker mypy,pyright shows "2/2",
 not "2/4", which would be misleading if only two checkers were ever run.
 
+Every string that originates from a checker or from the user's code (messages,
+file paths, scope names, alignment signals) is passed through rich.markup.escape
+before printing. Type checker messages routinely contain "list[str]" or
+"[arg-type]", which Rich would otherwise consume as markup tags.
+
 Output structure:
     ┌─ Header ─────────────────────────────────────────────────────┐
     │  rety — Python type checker cross-comparison                  │
@@ -118,7 +123,9 @@ def _render_header(con: Console, report: ComparisonReport) -> None:
     for checker in report.checkers_run:
         style = _CHECKER_STYLES.get(checker, "bold")
         version = report.checker_versions.get(checker) or "?"
-        checker_parts.append(f"[{style}]{checker}[/] {version}")
+        checker_parts.append(
+            f"[{style}]{rich_escape(checker)}[/] {rich_escape(version)}"
+        )
 
     checkers_str = "   ".join(checker_parts)
     con.print()
@@ -188,7 +195,7 @@ def _render_clusters(
     for file_path, file_clusters in by_file.items():
         # Use a short display path: relative to cwd if possible
         display_path = _short_path(file_path)
-        con.print(Rule(f"[bold]{display_path}[/]", style="bright_black"))
+        con.print(Rule(f"[bold]{rich_escape(display_path)}[/]", style="bright_black"))
 
         for cluster in file_clusters:
             _render_cluster(con, cluster, m=m, verbose=verbose)
@@ -223,9 +230,9 @@ def _render_cluster(
     # AST context
     context_parts: list[str] = []
     if cluster.enclosing_scope:
-        context_parts.append(f"in [italic]{cluster.enclosing_scope}[/]")
+        context_parts.append(f"in [italic]{rich_escape(cluster.enclosing_scope)}[/]")
     if cluster.enclosing_node_type:
-        context_parts.append(f"[{cluster.enclosing_node_type}]")
+        context_parts.append(rich_escape(f"[{cluster.enclosing_node_type}]"))
     context = "  " + "  ".join(context_parts) if context_parts else ""
 
     con.print(
@@ -241,7 +248,7 @@ def _render_cluster(
     # Alignment signals (verbose mode)
     if verbose and cluster.alignment_signals:
         for signal in cluster.alignment_signals:
-            con.print(f"         [dim italic]↳ {signal}[/]")
+            con.print(f"         [dim italic]↳ {rich_escape(signal)}[/]")
 
     con.print()
 
@@ -249,14 +256,14 @@ def _render_cluster(
 def _render_diagnostic_line(con: Console, diag: NormalizedDiagnostic) -> None:
     checker_style = _CHECKER_STYLES.get(diag.checker, "bold")
     sev_style = _SEVERITY_STYLES.get(diag.severity, "white")
-    code_suffix = (f" [dim][{rich_escape(diag.code)}][/]") if diag.code else ""
+    code_suffix = f" [dim]{rich_escape(f'[{diag.code}]')}[/]" if diag.code else ""
     col_hint = f":{diag.start_col}" if diag.start_col is not None else ""
 
     con.print(
         f"      [{checker_style}]{diag.checker:<10}[/]"
         f"[{sev_style}]{diag.severity.value:<9}[/]"
         f"[dim]{diag.start_line}{col_hint}[/]  "
-        f"{diag.message}{code_suffix}"
+        f"{rich_escape(diag.message)}{code_suffix}"
     )
 
 
