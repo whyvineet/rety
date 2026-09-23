@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - name: Install
+        run: uv sync --all-groups
+      - name: Lint
+        run: uv run ruff check src tests
+      - name: Type-check
+        run: uv run mypy src
+      - name: Test
+        run: uv run pytest -q
+
+  smoke:
+    # Runs rety against the real checkers so an upstream output-format change
+    # is caught even when the unit tests (which use captured fixtures) pass.
+    name: smoke / real checkers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install rety and all four checkers
+        run: uv sync --all-groups && uv pip install pyright pyrefly ty
+      - name: All four checkers must run and agree on basic_errors.py
+        run: |
+          uv run rety check --require-all --format json --output report.json tests/fixtures/basic_errors.py
+          uv run python - <<'EOF'
+          import json
+          report = json.load(open("report.json"))
+          assert report["checkers_run"] == ["mypy", "pyright", "pyrefly", "ty"], report["checkers_run"]
+          assert all(n > 0 for n in report["total_diagnostics"].values()), report["total_diagnostics"]
+          full = [c for c in report["clusters"] if len(c["checkers_present"]) == 4]
+          assert len(full) >= 2, "expected the three planted errors to cluster across all checkers"
+          print("smoke OK:", report["total_diagnostics"])
+          EOF
+      - name: Unmatched-format warnings must not appear
+        run: |
+          uv run rety check --require-all tests/fixtures/basic_errors.py 2> stderr.txt || true
+          if grep -q "RuntimeWarning" stderr.txt; then cat stderr.txt; exit 1; fi
