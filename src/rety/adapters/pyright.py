@@ -4,25 +4,28 @@ Pyright adapter for rety.
 Invocation:
     pyright --outputjson <paths>
 
-Output format:
-    Single JSON document (not JSON-lines). Structure:
+Output format (verified against Pyright 1.1.414 on 2026-09-24):
+    Single JSON document (not JSON-lines) on stdout:
     {
-        "version": "1.1.xxx",
+        "version": "1.1.414",
+        "time": "1790187993411",
         "generalDiagnostics": [
             {
-                "file": "/abs/path/to/file.py",
+                "file": "/abs/path/to/basic_errors.py",
                 "severity": "error" | "warning" | "information",
-                "message": "...",
-                "rule": "reportArgumentType" | null,
+                "message": "...",                # may contain newlines
                 "range": {
-                    "start": {"line": 0, "character": 0},
-                    "end":   {"line": 0, "character": 10}
-                }
+                    "start": {"line": 8, "character": 11},
+                    "end":   {"line": 8, "character": 15}
+                },
+                "rule": "reportReturnType"       # absent (not null) when there is no rule
             },
             ...
         ],
-        "summary": {"filesAnalyzed": N, "errorCount": N, ...}
+        "summary": {"filesAnalyzed": 1, "errorCount": 3, "warningCount": 0,
+                    "informationCount": 0, "timeInSec": 0.4}
     }
+    Paths are absolute. Real captured output lives in tests/fixtures/captured/pyright/.
 
 CRITICAL: Pyright uses 0-indexed line and character offsets (LSP convention).
     The normalization step converts to 1-indexed before constructing
@@ -35,11 +38,10 @@ Cache behavior:
     file hash, not by CLI flags, so stale-flag-override (the mypy problem) is
     not a known issue here. Monitor for analogous issues in CI environments.
 
-Phase 0 note:
-    Verify: does --outputjson suppress Pyright's interactive progress output?
-    Pyright sometimes emits progress dots to stdout when it thinks it's in a
-    TTY. The subprocess capture should prevent TTY detection, but verify with
-    real output.
+Progress output:
+    --outputjson suppresses Pyright's progress output entirely (verified):
+    stdout is exactly one JSON document, so the parser never has to skip
+    leading noise.
 """
 
 from __future__ import annotations
@@ -79,7 +81,7 @@ class PyrightAdapter(CheckerAdapter):
         """
         Run `pyright --version` and parse the version string.
 
-        Pyright --version output format: "pyright 1.1.380"
+        Pyright --version output format: "pyright 1.1.414"
         """
         try:
             result = subprocess.run(

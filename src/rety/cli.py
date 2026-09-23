@@ -12,6 +12,8 @@ Usage examples:
     rety check --format json --output report.json src/
     rety check --line-tolerance 1 --verbose src/mymodule.py
     rety check --require-all --checker mypy,pyright,pyrefly,ty src/
+    rety check --fail-on error src/
+    rety check --timeout 0 --checker mypy src/
 """
 
 from __future__ import annotations

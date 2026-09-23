@@ -56,13 +56,15 @@ class Confidence(StrEnum):
     """
     Confidence level for a DiagnosticCluster.
 
-    HIGH   — two or more checkers report diagnostics with exactly matching
+    Only pairs of diagnostics from *different* checkers count as evidence.
+
+    HIGH   — two different checkers report diagnostics with exactly matching
              source ranges (same start_line, same end_line).
-    MEDIUM — two or more checkers report diagnostics with overlapping (but not
-             identical) source ranges.
-    LOW    — two or more checkers report diagnostics that were merged via shared
-             AST enclosing-node context rather than direct range overlap; or a
-             cluster containing only a single checker's diagnostic.
+    MEDIUM — two different checkers report diagnostics with overlapping (but
+             not identical) source ranges.
+    LOW    — cross-checker members were joined only through a shared enclosing
+             AST node instance, --line-tolerance, or other members; or the
+             cluster holds diagnostics from a single checker only.
     """
 
     HIGH = "high"
@@ -200,8 +202,9 @@ class NormalizedDiagnostic(BaseModel):
     # ---- AST context (populated by alignment engine, not by adapters) ----
     enclosing_node_type: str | None = None
     """
-    The type name of the innermost AST node containing start_line
-    (e.g., "Call", "Assign", "Return", "FunctionDef"). None until enrichment.
+    The type name of the innermost statement or Call node containing
+    start_line (and start_col, when known), e.g. "Call", "Assign", "Return",
+    "If". None until enrichment, or if the file could not be parsed.
     """
 
     enclosing_scope: str | None = None
