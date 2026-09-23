@@ -89,7 +89,7 @@ class PyreflyAdapter(CheckerAdapter):
         """
         try:
             result = subprocess.run(
-                ["pyrefly", "--version"],
+                [self.executable, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=self.version_probe_timeout,
@@ -108,7 +108,7 @@ class PyreflyAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = ["pyrefly", "check", "--output-format", "json", *paths]
+        cmd = [self.executable, "check", "--output-format", "json", *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

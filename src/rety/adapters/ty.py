@@ -123,7 +123,7 @@ class TyAdapter(CheckerAdapter):
         """
         try:
             result = subprocess.run(
-                ["ty", "version", "--output-format", "json"],
+                [self.executable, "version", "--output-format", "json"],
                 capture_output=True,
                 text=True,
                 timeout=self.version_probe_timeout,
@@ -138,7 +138,7 @@ class TyAdapter(CheckerAdapter):
 
         try:
             result = subprocess.run(
-                ["ty", "version"],
+                [self.executable, "version"],
                 capture_output=True,
                 text=True,
                 timeout=self.version_probe_timeout,
@@ -159,7 +159,7 @@ class TyAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = ["ty", "check", "--output-format", "concise", *paths]
+        cmd = [self.executable, "check", "--output-format", "concise", *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

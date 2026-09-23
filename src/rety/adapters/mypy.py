@@ -79,7 +79,7 @@ class MypyAdapter(CheckerAdapter):
         """
         try:
             result = subprocess.run(
-                ["mypy", "--version"],
+                [self.executable, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=self.version_probe_timeout,
@@ -110,7 +110,7 @@ class MypyAdapter(CheckerAdapter):
 
         with tempfile.TemporaryDirectory(prefix="rety_mypy_cache_") as cache_dir:
             cmd = [
-                "mypy",
+                self.executable,
                 "--output=json",
                 "--no-incremental",
                 f"--cache-dir={cache_dir}",

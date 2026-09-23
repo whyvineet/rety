@@ -84,7 +84,7 @@ class PyrightAdapter(CheckerAdapter):
         """
         try:
             result = subprocess.run(
-                ["pyright", "--version"],
+                [self.executable, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=self.version_probe_timeout,
@@ -102,7 +102,7 @@ class PyrightAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = ["pyright", "--outputjson", *paths]
+        cmd = [self.executable, "--outputjson", *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

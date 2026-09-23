@@ -17,6 +17,7 @@ Extension point:
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -164,6 +165,18 @@ class CheckerAdapter(ABC):
         from "parse failed silently," so warnings are the only signal.
         """
         ...
+
+    @property
+    def executable(self) -> str:
+        """
+        The checker's executable, resolved through shutil.which.
+
+        subprocess.run(["pyright", ...]) on Windows only finds .exe files, but
+        npm installs Pyright as pyright.cmd. shutil.which honours PATHEXT and
+        returns the .cmd shim. Falls back to the bare name so a missing tool
+        still surfaces as FileNotFoundError, i.e. "not installed".
+        """
+        return shutil.which(self.name) or self.name
 
     def version(self) -> Optional[str]:
         """
