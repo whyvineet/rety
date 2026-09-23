@@ -91,7 +91,8 @@ class PyreflyAdapter(CheckerAdapter):
             result = subprocess.run(
                 [self.executable, "--version"],
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:

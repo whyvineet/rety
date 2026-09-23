@@ -203,7 +203,7 @@ class CheckerAdapter(ABC):
         """
         Shared subprocess runner used by concrete adapters.
 
-        Captures stdout and stderr as text. Does not raise on non-zero
+        Captures stdout and stderr as UTF-8 text. Does not raise on non-zero
         returncode — type checkers exit non-zero when diagnostics are found,
         which is expected and normal. Raises subprocess.TimeoutExpired if the
         checker exceeds `timeout` (default: self.timeout); the runner turns
@@ -212,7 +212,11 @@ class CheckerAdapter(ABC):
         return subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
+            # Checkers write UTF-8. Without an explicit encoding, text=True
+            # decodes with the locale code page (cp1252 on Windows), which
+            # turns Pyright's non-breaking spaces into "Â " mojibake.
+            encoding="utf-8",
+            errors="replace",
             cwd=cwd,
             timeout=timeout if timeout is not None else self.timeout,
         )

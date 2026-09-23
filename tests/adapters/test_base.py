@@ -35,3 +35,15 @@ def test_executable_falls_back_to_bare_name(monkeypatch) -> None:
 
     monkeypatch.setattr(base.shutil, "which", lambda name: None)
     assert MypyAdapter().executable == "mypy"
+
+
+def test_run_subprocess_decodes_utf8_regardless_of_locale() -> None:
+    """Pyright emits UTF-8 with non-breaking spaces; the locale code page must not mangle it."""
+    import sys
+
+    from rety.adapters.mypy import MypyAdapter
+
+    code = "import sys; sys.stdout.buffer.write('a\u00a0b \u2192 c'.encode('utf-8'))"
+    result = MypyAdapter()._run_subprocess([sys.executable, "-c", code], cwd=".")
+
+    assert result.stdout == "a b → c"
