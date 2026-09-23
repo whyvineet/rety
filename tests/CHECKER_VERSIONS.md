@@ -1,68 +1,63 @@
 # Checker Versions
 
-This file records the exact pinned versions of each type checker used to
-generate the golden-file test fixtures in `tests/golden/`.
+This file records the exact versions of each type checker used to generate
+the captured-output fixtures in `tests/fixtures/captured/<checker>/`.
 
-**The golden files in `tests/golden/` are only valid for the versions listed here.**
-
-A checker version bump that changes output shape will break golden tests loudly,
-which is the intended signal. When updating a checker version:
-1. Run all four checkers on the fixture set to capture new output.
-2. Update `tests/fixtures/captured/` with fresh captures.
-3. Update the expected clusters in `tests/golden/` to match the new behavior.
-4. Update this file with the new versions.
-5. Note any schema changes in the changelog entry for the adapter.
+The adapter parser tests in `tests/adapters/` assert against those captures,
+so **the captures are only valid for the versions listed here.** A checker
+release that changes its output shape will break those tests loudly, which is
+the intended signal.
 
 ---
 
 ## Current pinned versions
 
-> ⚠ These versions are placeholders. Run the commands below before generating
-> golden files and replace with actual output.
+| Checker | Version | Captured on | Output format used                                          |
+|---------|---------|-------------|-------------------------------------------------------------|
+| mypy    | 2.3.1   | 2026-09-24  | `--output=json` JSON-lines; columns 0-indexed               |
+| pyright | 1.1.414 | 2026-09-24  | `--outputjson`; 0-indexed LSP ranges; absolute paths        |
+| pyrefly | 1.3.1   | 2026-09-24  | `--output-format json`: `{"errors": [...]}`, rule in `name` |
+| ty      | 0.0.83  | 2026-09-24  | `--output-format concise`: `path:line:col: sev[rule] msg`   |
 
-```
-# Run these commands and paste the output here:
-mypy --version
-pyright --version
-pyrefly --version
-ty version
-```
+Captures were taken on Windows from the repository root, so relative paths in
+the mypy and ty captures use backslashes and the Pyright capture contains an
+absolute `d:\...` path. Tests compare only file basenames, never full paths.
 
-| Checker  | Version | Last verified |
-|----------|---------|---------------|
-| mypy     | TBD     | TBD           |
-| pyright  | TBD     | TBD           |
-| pyrefly  | TBD     | TBD           |
-| ty       | TBD     | TBD           |
+mypy and Pyrefly pick up this repository's `[tool.mypy] strict = true` when
+run from the root. That is why `untyped_function.py` produces
+missing-annotation errors in the captures that it would not produce under
+default settings.
 
 ---
 
 ## How to update
 
+When a checker version bump changes its output shape:
+
+1. Recapture every fixture with the new version (commands below).
+2. Update the assertions in `tests/adapters/test_<checker>.py` to match.
+3. Update the table above.
+4. Note the schema change in the adapter's module docstring.
+
 ```bash
-# Create a test venv with pinned checkers
-uv venv .venv-checkers
-uv pip install --python .venv-checkers mypy pyright pyrefly ty
+# Run from the repository root. `uv run --with <tool>` fetches the checker
+# into a temporary environment without installing it globally.
+for f in untyped_function basic_errors; do
+  uv run mypy --output=json --no-incremental --cache-dir="$(mktemp -d)" \
+      tests/fixtures/$f.py > tests/fixtures/captured/mypy/$f.jsonl
+  uv run --with pyright pyright --outputjson \
+      tests/fixtures/$f.py > tests/fixtures/captured/pyright/$f.json
+  uv run --with pyrefly pyrefly check --output-format json \
+      tests/fixtures/$f.py > tests/fixtures/captured/pyrefly/$f.json
+  uv run --with ty ty check --output-format concise \
+      tests/fixtures/$f.py > tests/fixtures/captured/ty/$f.txt
+done
 
-# Capture versions
-.venv-checkers/bin/mypy --version
-.venv-checkers/bin/pyright --version
-.venv-checkers/bin/pyrefly --version
-.venv-checkers/bin/ty version
-
-# Capture output for the untyped_function fixture (example)
-.venv-checkers/bin/mypy --output=json --no-incremental --cache-dir=/tmp/rety-mypy-test \
-    tests/fixtures/untyped_function.py \
-    > tests/fixtures/captured/mypy/untyped_function.jsonl
-
-.venv-checkers/bin/pyright --outputjson tests/fixtures/untyped_function.py \
-    > tests/fixtures/captured/pyright/untyped_function.json
-
-.venv-checkers/bin/pyrefly check --output-format json tests/fixtures/untyped_function.py \
-    > tests/fixtures/captured/pyrefly/untyped_function.json
-
-.venv-checkers/bin/ty check --output-format concise tests/fixtures/untyped_function.py \
-    > tests/fixtures/captured/ty/untyped_function.txt
+# Versions
+uv run mypy --version
+uv run --with pyright pyright --version
+uv run --with pyrefly pyrefly --version
+uv run --with ty ty version
 ```
 
 ---
@@ -70,20 +65,32 @@ uv pip install --python .venv-checkers mypy pyright pyrefly ty
 ## Notes on checker-specific behaviors
 
 ### mypy
-- `--no-incremental` is passed by rety to prevent stale-cache flag override (known bug in 1.20.x)
-- Syntax errors may produce plain-text lines mixed into JSON output (known bug #17660)
+- JSON `column` and `end_column` are 0-indexed (the text output adds 1);
+  rety converts them to 1-indexed. A negative column means unknown.
+- rety passes `--no-incremental` and an ephemeral `--cache-dir` so a stale
+  cache can never override `--output`.
+- mypy 2.x emits syntax errors as JSON (`"code": "syntax"`). The plain-text
+  fallback of mypy 1.x (bug #17660) is still tolerated with a warning.
 
 ### Pyright
-- Uses 0-indexed LSP-style line/character ranges; rety converts to 1-indexed
-- `--outputjson` suppresses interactive progress output
+- 0-indexed LSP-style `range`; rety converts to 1-indexed.
+- `rule` is omitted (not null) for diagnostics that have no rule, such as
+  unknown `# pyright:` directives.
+- `--outputjson` suppresses progress output; stdout is one JSON document.
+- Any comment line starting with `# pyright:` is parsed as a directive, so
+  fixture comments must not start with a checker name and a colon.
 
 ### Pyrefly
-- Schema stability across monthly releases is unproven; capture output and verify field names
-- Native SARIF 2.1.0 output available via `--output-format sarif` (relevant for v0.2)
+- `code` is an internal integer (-2 in every observed diagnostic); the rule
+  name is in `name`.
+- `stop_line`/`stop_column` are the (1-indexed, exclusive) end position.
+- Without a `pyrefly.toml`, Pyrefly imports settings from `[tool.mypy]` and
+  says so on stderr.
+- Native SARIF 2.1.0 output is available via `--output-format sarif`.
 
 ### ty
-- Pre-1.0 as of September 2026; output format may change between releases
-- `ty version --output-format json` provides structured version info
-- `ty explain rule --output-format json <code>` is the v0.2 crosswalk data source
-- The `concise` format regex in `rety/adapters/ty.py` was derived from documentation,
-  not from verified real output — Phase 1 must verify and update the regex
+- Pre-1.0; `concise` is text, one diagnostic per line, followed by a
+  `Found N diagnostics` or `All checks passed!` summary line on stdout.
+- `ty version --output-format json` gives structured version info.
+- `ty explain rule --output-format json <code>` is a future crosswalk data
+  source.

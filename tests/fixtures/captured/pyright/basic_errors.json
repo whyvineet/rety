@@ -1,0 +1,62 @@
+{
+    "version": "1.1.414",
+    "time": "1790189167251",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\basic_errors.py",
+            "severity": "error",
+            "message": "Type \"str\" is not assignable to return type \"int\"\n  \"str\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 8,
+                    "character": 11
+                },
+                "end": {
+                    "line": 8,
+                    "character": 15
+                }
+            },
+            "rule": "reportReturnType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\basic_errors.py",
+            "severity": "error",
+            "message": "Type \"Literal['a']\" is not assignable to declared type \"int\"\n  \"Literal['a']\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 11,
+                    "character": 9
+                },
+                "end": {
+                    "line": 11,
+                    "character": 12
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\basic_errors.py",
+            "severity": "error",
+            "message": "\"undefined_name\" is not defined",
+            "range": {
+                "start": {
+                    "line": 12,
+                    "character": 4
+                },
+                "end": {
+                    "line": 12,
+                    "character": 18
+                }
+            },
+            "rule": "reportUndefinedVariable"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 3,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.438
+    }
+}
+
