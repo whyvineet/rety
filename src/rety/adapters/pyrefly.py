@@ -43,7 +43,7 @@ Output format (verified against Pyrefly 1.3.1 on 2026-09-24):
 
 Cache behavior:
     Pyrefly has no on-disk cache that could carry flags between invocations.
-"""
+"""  # noqa: E501 -- docstring quotes real checker output verbatim
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ import json
 import subprocess
 import time
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -81,7 +81,7 @@ class PyreflyAdapter(CheckerAdapter):
             uses_text_parser=False,
         )
 
-    def detect_version(self) -> Optional[str]:
+    def detect_version(self) -> str | None:
         """
         Run ``pyrefly --version`` and parse the version string.
 
@@ -184,9 +184,9 @@ class PyreflyAdapter(CheckerAdapter):
     def _parse_single(
         self,
         obj: Any,
-        version: Optional[str],
-        raw_cwd: Optional[str] = None,
-    ) -> Optional[NormalizedDiagnostic]:
+        version: str | None,
+        raw_cwd: str | None = None,
+    ) -> NormalizedDiagnostic | None:
         """Parse one Pyrefly diagnostic object; None if it has no usable line."""
         if not isinstance(obj, dict):
             return None
@@ -229,7 +229,7 @@ class PyreflyAdapter(CheckerAdapter):
         )
 
 
-def _positive_int_or_none(value: Any) -> Optional[int]:
+def _positive_int_or_none(value: Any) -> int | None:
     """Coerce a 1-indexed position to int; None for missing, non-int, or < 1."""
     if value is None or isinstance(value, bool):
         return None

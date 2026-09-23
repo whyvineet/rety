@@ -47,7 +47,6 @@ from __future__ import annotations
 import json
 import subprocess
 import time
-from typing import Optional
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -76,7 +75,7 @@ class PyrightAdapter(CheckerAdapter):
             uses_text_parser=False,
         )
 
-    def detect_version(self) -> Optional[str]:
+    def detect_version(self) -> str | None:
         """
         Run `pyright --version` and parse the version string.
 
@@ -144,13 +143,13 @@ class PyrightAdapter(CheckerAdapter):
 
             # line: 0-indexed → 1-indexed; character: 0-indexed → 1-indexed
             start_line: int = start_obj.get("line", 0) + 1
-            start_col: Optional[int] = start_obj.get("character", 0) + 1
+            start_col: int | None = start_obj.get("character", 0) + 1
 
             # end position: convert only if present
-            end_line: Optional[int] = (
+            end_line: int | None = (
                 end_obj.get("line", 0) + 1 if end_obj else None
             )
-            end_col: Optional[int] = (
+            end_col: int | None = (
                 end_obj.get("character", 0) + 1 if end_obj else None
             )
 

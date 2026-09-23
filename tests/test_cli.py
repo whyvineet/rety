@@ -28,7 +28,9 @@ def fake_registry(monkeypatch: pytest.MonkeyPatch) -> dict[str, FakeAdapter]:
     return instances
 
 
-def test_skipped_checkers_are_reported_on_stderr(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_skipped_checkers_are_reported_on_stderr(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
@@ -43,7 +45,9 @@ def test_skipped_checkers_are_reported_on_stderr(fake_registry: dict[str, FakeAd
     assert "--require-all" in result.stderr
 
 
-def test_nothing_skipped_prints_no_notice(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_nothing_skipped_prints_no_notice(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
@@ -53,7 +57,9 @@ def test_nothing_skipped_prints_no_notice(fake_registry: dict[str, FakeAdapter],
     assert "Skipped" not in result.stderr
 
 
-def test_require_all_fails_when_checker_missing(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_require_all_fails_when_checker_missing(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
@@ -66,7 +72,9 @@ def test_require_all_fails_when_checker_missing(fake_registry: dict[str, FakeAda
     assert "not installed" in result.stderr
 
 
-def test_json_output_lists_only_checkers_that_ran(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_json_output_lists_only_checkers_that_ran(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
@@ -80,7 +88,9 @@ def test_json_output_lists_only_checkers_that_ran(fake_registry: dict[str, FakeA
     assert report["total_diagnostics"] == {"mypy": 1, "pyright": 1}
 
 
-def test_unknown_checker_name_is_rejected(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_unknown_checker_name_is_rejected(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
@@ -100,7 +110,9 @@ def test_output_requires_json_format(fake_registry: dict[str, FakeAdapter], tmp_
     assert "--output is only valid with --format json" in result.stderr
 
 
-def test_duplicate_checker_names_run_once(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_duplicate_checker_names_run_once(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
@@ -124,25 +136,33 @@ def _invoke_fail_on(level: str, target: Path, checker: str = "mypy") -> int:
     return CliRunner().invoke(cli.main, args).exit_code
 
 
-def test_fail_on_none_exits_0_even_with_errors(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_fail_on_none_exits_0_even_with_errors(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
     assert _invoke_fail_on("none", target) == 0
 
 
-def test_fail_on_error_exits_1_when_errors_found(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_fail_on_error_exits_1_when_errors_found(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
     assert _invoke_fail_on("error", target) == 1
 
 
-def test_fail_on_any_exits_1_when_anything_found(fake_registry: dict[str, FakeAdapter], tmp_path: Path) -> None:
+def test_fail_on_any_exits_1_when_anything_found(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
     assert _invoke_fail_on("any", target) == 1
 
 
-def test_fail_on_error_ignores_warnings_but_any_does_not(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_fail_on_error_ignores_warnings_but_any_does_not(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     from rety.schema import Severity
 
     warner = FakeAdapter("mypy", severity=Severity.warning)

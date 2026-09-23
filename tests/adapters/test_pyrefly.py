@@ -81,17 +81,37 @@ def test_parse_untyped_function_from_captured_fixture() -> None:
 
 def test_integer_code_field_is_never_used_as_rule() -> None:
     """Pyrefly's 'code' is an internal int (-2); the rule is 'name'."""
-    data = {"errors": [{"line": 1, "column": 1, "path": "f.py", "code": -2,
-                        "name": "bad-argument-type", "description": "x",
-                        "severity": "error"}]}
+    data = {
+        "errors": [
+            {
+                "line": 1,
+                "column": 1,
+                "path": "f.py",
+                "code": -2,
+                "name": "bad-argument-type",
+                "description": "x",
+                "severity": "error",
+            }
+        ]
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert d.code == "bad-argument-type"
     assert d.code != "-2"
 
 
 def test_missing_name_gives_none_code() -> None:
-    data = {"errors": [{"line": 1, "column": 1, "path": "f.py", "code": -2,
-                        "description": "x", "severity": "error"}]}
+    data = {
+        "errors": [
+            {
+                "line": 1,
+                "column": 1,
+                "path": "f.py",
+                "code": -2,
+                "description": "x",
+                "severity": "error",
+            }
+        ]
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert d.code is None
 
@@ -102,9 +122,18 @@ def test_missing_name_gives_none_code() -> None:
 
 
 def test_parse_bare_list_is_accepted() -> None:
-    data = [{"line": 10, "column": 5, "stop_line": 10, "stop_column": 20,
-             "path": "tests/fixtures/foo.py", "name": "bad-argument-type",
-             "description": "Expected `int`, got `str`", "severity": "error"}]
+    data = [
+        {
+            "line": 10,
+            "column": 5,
+            "stop_line": 10,
+            "stop_column": 20,
+            "path": "tests/fixtures/foo.py",
+            "name": "bad-argument-type",
+            "description": "Expected `int`, got `str`",
+            "severity": "error",
+        }
+    ]
     (d,) = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert d.start_line == 10
     assert d.start_col == 5
@@ -112,18 +141,37 @@ def test_parse_bare_list_is_accepted() -> None:
 
 
 def test_parse_warning_severity() -> None:
-    data = {"errors": [{"line": 5, "column": 1, "path": "foo.py",
-                        "name": "possibly-undefined",
-                        "description": "Variable might be undefined",
-                        "severity": "warning"}]}
+    data = {
+        "errors": [
+            {
+                "line": 5,
+                "column": 1,
+                "path": "foo.py",
+                "name": "possibly-undefined",
+                "description": "Variable might be undefined",
+                "severity": "warning",
+            }
+        ]
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert d.severity == Severity.warning
 
 
 def test_parse_zero_or_negative_positions_become_none() -> None:
-    data = {"errors": [{"line": 1, "column": 0, "stop_line": -1, "stop_column": 0,
-                        "path": "f.py", "name": "r", "description": "e",
-                        "severity": "error"}]}
+    data = {
+        "errors": [
+            {
+                "line": 1,
+                "column": 0,
+                "stop_line": -1,
+                "stop_column": 0,
+                "path": "f.py",
+                "name": "r",
+                "description": "e",
+                "severity": "error",
+            }
+        ]
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert d.start_col is None
     assert d.end_line is None
@@ -133,18 +181,30 @@ def test_parse_zero_or_negative_positions_become_none() -> None:
 def test_parse_entry_without_line_is_skipped_with_warning(
     recwarn: pytest.WarningsChecker,
 ) -> None:
-    data = {"errors": [
-        {"column": 1, "path": "f.py", "name": "r", "description": "no line"},
-        {"line": 3, "column": 1, "path": "f.py", "name": "r", "description": "ok"},
-    ]}
+    data = {
+        "errors": [
+            {"column": 1, "path": "f.py", "name": "r", "description": "no line"},
+            {"line": 3, "column": 1, "path": "f.py", "name": "r", "description": "ok"},
+        ]
+    }
     diagnostics = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert [d.start_line for d in diagnostics] == [3]
     assert any(issubclass(w.category, RuntimeWarning) for w in recwarn.list)
 
 
 def test_parse_description_falls_back_to_concise_description() -> None:
-    data = {"errors": [{"line": 1, "column": 1, "path": "f.py", "name": "r",
-                        "concise_description": "short", "severity": "error"}]}
+    data = {
+        "errors": [
+            {
+                "line": 1,
+                "column": 1,
+                "path": "f.py",
+                "name": "r",
+                "concise_description": "short",
+                "severity": "error",
+            }
+        ]
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps(data)))
     assert d.message == "short"
 
@@ -179,8 +239,14 @@ def test_parse_checker_name_is_pyrefly() -> None:
 
 
 def test_parse_raw_is_per_diagnostic_subobject() -> None:
-    entry = {"line": 1, "column": 1, "path": "f.py", "name": "r",
-             "description": "test error", "severity": "error"}
+    entry = {
+        "line": 1,
+        "column": 1,
+        "path": "f.py",
+        "name": "r",
+        "description": "test error",
+        "severity": "error",
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps({"errors": [entry]})))
     raw_parsed = json.loads(d.raw)
     assert "errors" not in raw_parsed

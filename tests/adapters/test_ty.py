@@ -53,9 +53,7 @@ def test_parse_basic_errors_from_captured_fixture(recwarn: pytest.WarningsChecke
     assert d.start_col == 12
     assert d.end_line is None and d.end_col is None
     assert d.code == "invalid-return-type"
-    assert d.message == (
-        "Return type does not match returned value: expected `int`, found `str`"
-    )
+    assert d.message == ("Return type does not match returned value: expected `int`, found `str`")
     assert Path(d.file).name == "basic_errors.py"
     assert Path(d.file).is_absolute()
 
@@ -191,8 +189,13 @@ def test_raw_is_original_text_line() -> None:
 
 def test_relative_file_resolves_against_invocation_cwd(tmp_path: Path) -> None:
     raw = RawInvocation(
-        checker="ty", returncode=1, stdout="pkg/mod.py:1:1: error[r] m", stderr="",
-        duration_ms=1.0, version="0.0.83", cwd=str(tmp_path),
+        checker="ty",
+        returncode=1,
+        stdout="pkg/mod.py:1:1: error[r] m",
+        stderr="",
+        duration_ms=1.0,
+        version="0.0.83",
+        cwd=str(tmp_path),
     )
     (d,) = ADAPTER.parse(raw)
     assert d.file == str((tmp_path / "pkg" / "mod.py").resolve())

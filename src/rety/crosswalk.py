@@ -25,14 +25,12 @@ Contribution guide (v0.2+):
 
 from __future__ import annotations
 
-from typing import Optional
-
 # Crosswalk table — empty in v0.1, populated from data/crosswalk.toml in v0.2.
 # Type: dict[(checker_name, code), code_family]
 _CROSSWALK: dict[tuple[str, str], str] = {}
 
 
-def lookup_code_family(checker: str, code: Optional[str]) -> Optional[str]:
+def lookup_code_family(checker: str, code: str | None) -> str | None:
     """
     Return the cross-checker code family for a checker-native error code.
 

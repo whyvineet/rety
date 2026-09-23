@@ -88,7 +88,10 @@ def test_n_over_m_uses_checkers_actually_run() -> None:
 
 
 def test_multiline_message_is_collapsed_to_one_line() -> None:
-    msg = 'Type "str" is not assignable to return type "int"\n\xa0\xa0"str" is not assignable to "int"'
+    msg = (
+        'Type "str" is not assignable to return type "int"'
+        '\n\xa0\xa0"str" is not assignable to "int"'
+    )
     out = _render_to_text(_report(_diag("pyright", 2, msg, code="reportReturnType")))
     assert 'return type "int" "str" is not assignable' in out
     assert "\xa0" not in out

@@ -37,8 +37,15 @@ def _make_raw(stdout: str, version: str = "2.3.1") -> RawInvocation:
 
 def _line(**fields: object) -> str:
     base: dict[str, object] = {
-        "file": "foo.py", "line": 1, "column": 0, "end_line": 1, "end_column": 1,
-        "message": "m", "hint": None, "code": "misc", "severity": "error",
+        "file": "foo.py",
+        "line": 1,
+        "column": 0,
+        "end_line": 1,
+        "end_column": 1,
+        "message": "m",
+        "hint": None,
+        "code": "misc",
+        "severity": "error",
     }
     base.update(fields)
     return json.dumps(base)
@@ -115,8 +122,14 @@ def test_negative_column_means_unknown() -> None:
 
 
 def test_missing_end_positions_are_none() -> None:
-    obj = {"file": "foo.py", "line": 3, "column": 4, "message": "m",
-           "code": "misc", "severity": "error"}
+    obj = {
+        "file": "foo.py",
+        "line": 3,
+        "column": 4,
+        "message": "m",
+        "code": "misc",
+        "severity": "error",
+    }
     (d,) = ADAPTER.parse(_make_raw(json.dumps(obj)))
     assert d.start_col == 5
     assert d.end_line is None
@@ -161,11 +174,13 @@ def test_parse_severity_note() -> None:
 
 def test_parse_tolerates_non_json_lines(recwarn: pytest.WarningsChecker) -> None:
     """Plain-text lines (older mypy syntax-error fallback) are skipped with a warning."""
-    mixed_output = "\n".join([
-        _line(file="ok.py", message="real error"),
-        "foo.py:1: error: invalid syntax",
-        _line(file="ok2.py", line=2, message="another error"),
-    ])
+    mixed_output = "\n".join(
+        [
+            _line(file="ok.py", message="real error"),
+            "foo.py:1: error: invalid syntax",
+            _line(file="ok2.py", line=2, message="another error"),
+        ]
+    )
     diagnostics = ADAPTER.parse(_make_raw(mixed_output))
 
     assert len(diagnostics) == 2
@@ -210,7 +225,9 @@ def test_multiple_diagnostics_parsed_in_order() -> None:
     diagnostics = ADAPTER.parse(_make_raw("\n".join(lines)))
 
     assert [d.severity for d in diagnostics] == [
-        Severity.error, Severity.warning, Severity.note,
+        Severity.error,
+        Severity.warning,
+        Severity.note,
     ]
     assert [d.start_line for d in diagnostics] == [1, 5, 10]
 
@@ -218,8 +235,13 @@ def test_multiple_diagnostics_parsed_in_order() -> None:
 def test_relative_file_resolves_against_invocation_cwd(tmp_path: Path) -> None:
     """Paths are resolved against the cwd the checker ran in, not the process cwd."""
     raw = RawInvocation(
-        checker="mypy", returncode=1, stdout=_line(file="pkg/mod.py"), stderr="",
-        duration_ms=1.0, version="2.3.1", cwd=str(tmp_path),
+        checker="mypy",
+        returncode=1,
+        stdout=_line(file="pkg/mod.py"),
+        stderr="",
+        duration_ms=1.0,
+        version="2.3.1",
+        cwd=str(tmp_path),
     )
     (d,) = ADAPTER.parse(raw)
     assert d.file == str((tmp_path / "pkg" / "mod.py").resolve())

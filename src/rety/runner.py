@@ -36,11 +36,9 @@ from __future__ import annotations
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Optional
 
 from rety.adapters.base import CheckerAdapter
 from rety.schema import NormalizedDiagnostic, RawInvocation
-
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -100,7 +98,7 @@ class CheckerResult:
     adapter: CheckerAdapter
     invocation: RawInvocation
     diagnostics: list[NormalizedDiagnostic]
-    error: Optional[Exception] = field(default=None)
+    error: Exception | None = field(default=None)
 
     @property
     def checker_name(self) -> str:
@@ -120,7 +118,7 @@ class CheckerResult:
 def run_checkers(
     adapters: list[CheckerAdapter],
     paths: list[str],
-    cwd: Optional[str] = None,
+    cwd: str | None = None,
     require_all: bool = False,
 ) -> list[CheckerResult]:
     """

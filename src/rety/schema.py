@@ -27,8 +27,7 @@ Field conventions:
 from __future__ import annotations
 
 import hashlib
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -44,7 +43,7 @@ SCHEMA_VERSION: int = 1
 # ---------------------------------------------------------------------------
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Normalized diagnostic severity, mapped from each checker's vocabulary."""
 
     error = "error"
@@ -53,7 +52,7 @@ class Severity(str, Enum):
     information = "information"
 
 
-class Confidence(str, Enum):
+class Confidence(StrEnum):
     """
     Confidence level for a DiagnosticCluster.
 
@@ -103,8 +102,8 @@ class RawInvocation:
         stdout: str,
         stderr: str,
         duration_ms: float,
-        version: Optional[str],
-        cwd: Optional[str] = None,
+        version: str | None,
+        cwd: str | None = None,
     ) -> None:
         self.checker = checker
         self.returncode = returncode
@@ -146,7 +145,7 @@ class NormalizedDiagnostic(BaseModel):
     checker: str
     """Checker name: "mypy", "pyright", "pyrefly", or "ty"."""
 
-    checker_version: Optional[str] = None
+    checker_version: str | None = None
     """Detected checker version string (e.g. "1.11.2"), or None."""
 
     # ---- Location ----
@@ -159,26 +158,26 @@ class NormalizedDiagnostic(BaseModel):
     start_line: int
     """1-indexed. Always present."""
 
-    start_col: Optional[int] = None
+    start_col: int | None = None
     """1-indexed. None if not reported by the checker (never 0)."""
 
-    end_line: Optional[int] = None
+    end_line: int | None = None
     """1-indexed. None if not reported (never 0). ty's concise format omits this."""
 
-    end_col: Optional[int] = None
+    end_col: int | None = None
     """1-indexed. None if not reported (never 0). ty's concise format omits this."""
 
     # ---- Classification ----
     severity: Severity
 
-    code: Optional[str] = None
+    code: str | None = None
     """
     Checker-native error/rule code (e.g. mypy's "arg-type", Pyright's
     "reportArgumentType", ty's rule name). None if the checker doesn't emit codes
     for this diagnostic.
     """
 
-    code_family: Optional[str] = None
+    code_family: str | None = None
     """
     Cross-checker code family name from the error-code crosswalk table.
     Always None in v0.1 — populated by rety/crosswalk.py in v0.2.
@@ -199,20 +198,20 @@ class NormalizedDiagnostic(BaseModel):
     """
 
     # ---- AST context (populated by alignment engine, not by adapters) ----
-    enclosing_node_type: Optional[str] = None
+    enclosing_node_type: str | None = None
     """
     The type name of the innermost AST node containing start_line
     (e.g., "Call", "Assign", "Return", "FunctionDef"). None until enrichment.
     """
 
-    enclosing_scope: Optional[str] = None
+    enclosing_scope: str | None = None
     """
     The name of the nearest enclosing function or class. None until enrichment,
     or None if the diagnostic is at module level.
     """
 
     @model_validator(mode="after")
-    def _validate_no_zero_positions(self) -> "NormalizedDiagnostic":
+    def _validate_no_zero_positions(self) -> NormalizedDiagnostic:
         """Ensure 0 is never used to represent a missing position."""
         for field_name in ("start_col", "end_line", "end_col"):
             value = getattr(self, field_name)
@@ -261,10 +260,10 @@ class DiagnosticCluster(BaseModel):
     Derived from the union of all member diagnostics' line ranges.
     """
 
-    enclosing_node_type: Optional[str] = None
+    enclosing_node_type: str | None = None
     """Most common enclosing AST node type among member diagnostics."""
 
-    enclosing_scope: Optional[str] = None
+    enclosing_scope: str | None = None
     """Most common enclosing scope name among member diagnostics."""
 
     diagnostics: list[NormalizedDiagnostic]
@@ -307,7 +306,7 @@ class ComparisonReport(BaseModel):
     checkers_run: list[str]
     """Names of the checkers that were actually invoked (not all four, if fewer were available)."""
 
-    checker_versions: dict[str, Optional[str]]
+    checker_versions: dict[str, str | None]
     """Detected version per checker. Value is None if version detection failed."""
 
     total_diagnostics: dict[str, int]

@@ -98,9 +98,7 @@ def test_same_line_three_checkers() -> None:
 
 
 def test_same_line_all_four_checkers() -> None:
-    clusters = align(
-        [diag("mypy", 42), diag("pyright", 42), diag("pyrefly", 42), diag("ty", 42)]
-    )
+    clusters = align([diag("mypy", 42), diag("pyright", 42), diag("pyrefly", 42), diag("ty", 42)])
 
     assert len(clusters) == 1
     c = clusters[0]
@@ -224,7 +222,9 @@ def test_unrelated_adjacent_statements_of_same_kind_do_not_merge() -> None:
     first = _line_of("first = 1")
     third = _line_of("third = 3.0")
 
-    clusters = align([diag("mypy", first, file=MULTILINE_FILE), diag("pyright", third, file=MULTILINE_FILE)])
+    clusters = align(
+        [diag("mypy", first, file=MULTILINE_FILE), diag("pyright", third, file=MULTILINE_FILE)]
+    )
 
     assert len(clusters) == 2
     assert all(len(c.checkers_present) == 1 for c in clusters)
@@ -234,7 +234,9 @@ def test_adjacent_lines_in_different_statements_do_not_merge() -> None:
     first = _line_of("first = 1")
     second = _line_of('second = "two"')
 
-    clusters = align([diag("mypy", first, file=MULTILINE_FILE), diag("ty", second, file=MULTILINE_FILE)])
+    clusters = align(
+        [diag("mypy", first, file=MULTILINE_FILE), diag("ty", second, file=MULTILINE_FILE)]
+    )
 
     assert len(clusters) == 2
 
@@ -430,7 +432,11 @@ def test_same_checker_exact_pair_does_not_inflate_mixed_cluster() -> None:
     cluster is MEDIUM. The same-checker exact pair must not make it HIGH.
     """
     clusters = align(
-        [diag("mypy", 10, 12, message="a"), diag("mypy", 10, 12, message="b"), diag("pyright", 11, 15)]
+        [
+            diag("mypy", 10, 12, message="a"),
+            diag("mypy", 10, 12, message="b"),
+            diag("pyright", 11, 15),
+        ]
     )
 
     assert len(clusters) == 1

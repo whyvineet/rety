@@ -41,7 +41,7 @@ Capabilities:
 Cache behavior:
     ty keeps its incremental state in memory (Salsa); there is no on-disk
     cache that could leak flags between rety invocations.
-"""
+"""  # noqa: E501 -- docstring quotes real checker output verbatim
 
 from __future__ import annotations
 
@@ -50,7 +50,6 @@ import re
 import subprocess
 import time
 import warnings
-from typing import Optional
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -115,7 +114,7 @@ class TyAdapter(CheckerAdapter):
             uses_text_parser=True,
         )
 
-    def detect_version(self) -> Optional[str]:
+    def detect_version(self) -> str | None:
         """
         Use ``ty version --output-format json`` for structured version detection.
 
@@ -198,7 +197,7 @@ class TyAdapter(CheckerAdapter):
             severity = _SEVERITY_MAP.get(m.group("severity").lower(), Severity.error)
 
             col_raw = int(m.group("col"))
-            start_col: Optional[int] = col_raw if col_raw != 0 else None
+            start_col: int | None = col_raw if col_raw != 0 else None
 
             # ty prints paths relative to its cwd when given relative paths;
             # resolve against the invocation cwd recorded on RawInvocation.

@@ -48,7 +48,6 @@ import itertools
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from rety.schema import (
     Confidence,
@@ -112,7 +111,7 @@ class _Span:
     def is_multiline(self) -> bool:
         return self.end_line > self.start_line
 
-    def contains(self, line: int, col0: Optional[int]) -> bool:
+    def contains(self, line: int, col0: int | None) -> bool:
         """True if (line, col0) is inside this span. col0 None = line-only test."""
         if not (self.start_line <= line <= self.end_line):
             return False
@@ -144,7 +143,7 @@ class _Enriched:
     anchors: frozenset[_Span]
 
 
-_index_cache: dict[str, Optional[_FileIndex]] = {}
+_index_cache: dict[str, _FileIndex | None] = {}
 
 
 def _build_index(tree: ast.Module) -> _FileIndex:
@@ -186,7 +185,7 @@ def _build_index(tree: ast.Module) -> _FileIndex:
     return _FileIndex(dict(nodes_by_line), dict(scopes_by_line))
 
 
-def _get_index(file_path: str) -> Optional[_FileIndex]:
+def _get_index(file_path: str) -> _FileIndex | None:
     """
     Parse and index a file, cached by SHA-256 of its content.
 
@@ -201,7 +200,7 @@ def _get_index(file_path: str) -> Optional[_FileIndex]:
     if key in _index_cache:
         return _index_cache[key]
 
-    index: Optional[_FileIndex]
+    index: _FileIndex | None
     try:
         tree = ast.parse(content.decode("utf-8", errors="replace"))
         index = _build_index(tree)
@@ -215,8 +214,8 @@ def _get_index(file_path: str) -> Optional[_FileIndex]:
 def _lookup(
     index: _FileIndex,
     line: int,
-    col1: Optional[int],
-) -> tuple[Optional[str], Optional[str], frozenset[_Span]]:
+    col1: int | None,
+) -> tuple[str | None, str | None, frozenset[_Span]]:
     """
     Find the innermost node, the enclosing scope and the anchor spans for a
     position. col1 is 1-indexed (schema convention) or None.
@@ -332,7 +331,7 @@ def _cluster_by_range(
 # ---------------------------------------------------------------------------
 
 
-def _shared_anchor(e1: _Enriched, e2: _Enriched) -> Optional[_Span]:
+def _shared_anchor(e1: _Enriched, e2: _Enriched) -> _Span | None:
     """The innermost multi-line anchor node containing both positions, if any."""
     shared = [a for a in e1.anchors & e2.anchors if a.is_multiline]
     return max(shared, key=lambda a: a.depth) if shared else None
@@ -455,7 +454,7 @@ def _score_cluster(
 # ---------------------------------------------------------------------------
 
 
-def _most_common(values: list[str]) -> Optional[str]:
+def _most_common(values: list[str]) -> str | None:
     return max(set(values), key=values.count) if values else None
 
 

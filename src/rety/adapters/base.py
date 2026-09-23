@@ -20,14 +20,13 @@ from __future__ import annotations
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from rety.schema import NormalizedDiagnostic, RawInvocation
 
 
-def resolve_path(file_raw: str, cwd: Optional[str]) -> str:
+def resolve_path(file_raw: str, cwd: str | None) -> str:
     """
     Resolve a checker-reported path to an absolute, normalized path.
 
@@ -91,17 +90,17 @@ class CheckerAdapter(ABC):
     """
 
     #: Seconds to wait for the checker subprocess in run(). None = no limit.
-    timeout: Optional[float] = None
+    timeout: float | None = None
 
     #: Seconds to wait for a `--version` probe before treating the checker as
     #: unavailable. Generous because Pyright's node startup can be slow on a
     #: loaded machine.
     version_probe_timeout: float = 30.0
 
-    _version_cache: Optional[str] = None
+    _version_cache: str | None = None
     _version_probed: bool = False
 
-    def __init__(self, timeout: Optional[float] = None) -> None:
+    def __init__(self, timeout: float | None = None) -> None:
         self.timeout = timeout
 
     @property
@@ -117,7 +116,7 @@ class CheckerAdapter(ABC):
         ...
 
     @abstractmethod
-    def detect_version(self) -> Optional[str]:
+    def detect_version(self) -> str | None:
         """
         Detect the installed version of this checker.
 
@@ -178,7 +177,7 @@ class CheckerAdapter(ABC):
         """
         return shutil.which(self.name) or self.name
 
-    def version(self) -> Optional[str]:
+    def version(self) -> str | None:
         """
         detect_version(), memoized per instance.
 
@@ -199,7 +198,7 @@ class CheckerAdapter(ABC):
         cmd: list[str],
         cwd: str,
         *,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """
         Shared subprocess runner used by concrete adapters.

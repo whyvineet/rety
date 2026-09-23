@@ -42,7 +42,7 @@ import subprocess
 import tempfile
 import time
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -71,7 +71,7 @@ class MypyAdapter(CheckerAdapter):
             uses_text_parser=False,
         )
 
-    def detect_version(self) -> Optional[str]:
+    def detect_version(self) -> str | None:
         """
         Run `mypy --version` and parse the version string.
 
@@ -155,9 +155,9 @@ class MypyAdapter(CheckerAdapter):
 
             # Lines are 1-indexed; columns are 0-indexed and converted here.
             start_line: int = max(_as_int(obj.get("line"), default=1), 1)
-            start_col: Optional[int] = _col_to_1indexed(obj.get("column"))
-            end_line: Optional[int] = _line_or_none(obj.get("end_line"))
-            end_col: Optional[int] = _col_to_1indexed(obj.get("end_column"))
+            start_col: int | None = _col_to_1indexed(obj.get("column"))
+            end_line: int | None = _line_or_none(obj.get("end_line"))
+            end_col: int | None = _col_to_1indexed(obj.get("end_column"))
 
             # mypy prints paths relative to its cwd when given relative args;
             # resolve against the invocation cwd recorded on RawInvocation.
@@ -202,7 +202,7 @@ def _as_int(value: Any, default: int) -> int:
         return default
 
 
-def _col_to_1indexed(value: Any) -> Optional[int]:
+def _col_to_1indexed(value: Any) -> int | None:
     """
     Convert mypy's 0-indexed column to 1-indexed.
 
@@ -218,7 +218,7 @@ def _col_to_1indexed(value: Any) -> Optional[int]:
     return v + 1 if v >= 0 else None
 
 
-def _line_or_none(value: Any) -> Optional[int]:
+def _line_or_none(value: Any) -> int | None:
     """Return a 1-indexed line as-is; None for missing, non-numeric, or < 1."""
     if value is None or isinstance(value, bool):
         return None

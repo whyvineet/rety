@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import subprocess
 import time
-from typing import Optional
 
 import pytest
 
@@ -24,8 +23,8 @@ class FakeAdapter(CheckerAdapter):
         available: bool = True,
         delay: float = 0.0,
         fail: bool = False,
-        timeout_after: Optional[float] = None,
-        timeout: Optional[float] = None,
+        timeout_after: float | None = None,
+        timeout: float | None = None,
         severity: Severity = Severity.error,
     ) -> None:
         super().__init__(timeout=timeout)
@@ -36,7 +35,7 @@ class FakeAdapter(CheckerAdapter):
         self._timeout_after = timeout_after
         self._severity = severity
         self.version_calls = 0
-        self.seen_cwd: Optional[str] = None
+        self.seen_cwd: str | None = None
         self.seen_paths: list[str] = []
 
     @property
@@ -47,7 +46,7 @@ class FakeAdapter(CheckerAdapter):
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities()
 
-    def detect_version(self) -> Optional[str]:
+    def detect_version(self) -> str | None:
         self.version_calls += 1
         return "1.0" if self._available else None
 
@@ -61,15 +60,23 @@ class FakeAdapter(CheckerAdapter):
         if self._fail:
             raise RuntimeError(f"{self._name} exploded")
         return RawInvocation(
-            checker=self._name, returncode=1, stdout=f"{self._name}-out",
-            stderr="", duration_ms=1.0, version="1.0",
+            checker=self._name,
+            returncode=1,
+            stdout=f"{self._name}-out",
+            stderr="",
+            duration_ms=1.0,
+            version="1.0",
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
         return [
             NormalizedDiagnostic(
-                checker=self._name, file="/x.py", start_line=1,
-                severity=self._severity, message=raw.stdout, raw=raw.stdout,
+                checker=self._name,
+                file="/x.py",
+                start_line=1,
+                severity=self._severity,
+                message=raw.stdout,
+                raw=raw.stdout,
             )
         ]
 
@@ -85,7 +92,8 @@ def test_results_follow_adapter_order_not_completion_order() -> None:
 def test_unavailable_adapters_are_skipped_by_default() -> None:
     results = run_checkers(
         [FakeAdapter("a"), FakeAdapter("b", available=False), FakeAdapter("c")],
-        paths=["src"], cwd="/tmp",
+        paths=["src"],
+        cwd="/tmp",
     )
     assert [r.checker_name for r in results] == ["a", "c"]
 
@@ -94,7 +102,9 @@ def test_require_all_raises_for_missing_adapter() -> None:
     with pytest.raises(CheckerUnavailableError) as excinfo:
         run_checkers(
             [FakeAdapter("a"), FakeAdapter("missing", available=False)],
-            paths=["src"], cwd="/tmp", require_all=True,
+            paths=["src"],
+            cwd="/tmp",
+            require_all=True,
         )
     assert excinfo.value.checker_name == "missing"
     assert "missing" in str(excinfo.value)

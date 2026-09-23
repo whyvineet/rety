@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Optional
 
 import click
 
@@ -28,7 +27,6 @@ from rety.align import align
 from rety.report import json_report, terminal
 from rety.runner import CheckerUnavailableError, install_hint, run_checkers
 from rety.schema import ComparisonReport, Severity
-
 
 # ---------------------------------------------------------------------------
 # CLI group
@@ -151,7 +149,7 @@ def check(
     paths: tuple[str, ...],
     checker: str,
     output_format: str,
-    output: Optional[str],
+    output: str | None,
     line_tolerance: int,
     verbose: bool,
     require_all: bool,
@@ -238,7 +236,7 @@ def check(
 
     # Aggregate results
     checkers_run: list[str] = []
-    checker_versions: dict[str, Optional[str]] = {}
+    checker_versions: dict[str, str | None] = {}
     total_diagnostics: dict[str, int] = {}
     all_diagnostics = []
 

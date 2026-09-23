@@ -8,8 +8,8 @@ based on the --checker flag.
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter
 from rety.adapters.mypy import MypyAdapter
-from rety.adapters.pyright import PyrightAdapter
 from rety.adapters.pyrefly import PyreflyAdapter
+from rety.adapters.pyright import PyrightAdapter
 from rety.adapters.ty import TyAdapter
 
 __all__ = [
