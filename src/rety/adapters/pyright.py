@@ -149,12 +149,8 @@ class PyrightAdapter(CheckerAdapter):
             start_col: int | None = start_obj.get("character", 0) + 1
 
             # end position: convert only if present
-            end_line: int | None = (
-                end_obj.get("line", 0) + 1 if end_obj else None
-            )
-            end_col: int | None = (
-                end_obj.get("character", 0) + 1 if end_obj else None
-            )
+            end_line: int | None = end_obj.get("line", 0) + 1 if end_obj else None
+            end_col: int | None = end_obj.get("character", 0) + 1 if end_obj else None
 
             # Pyright prints absolute paths; resolve anyway to normalize
             # drive-letter case and separators on Windows.

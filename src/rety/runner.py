@@ -70,8 +70,7 @@ class CheckerUnavailableError(Exception):
     def __init__(self, checker_name: str) -> None:
         hint = install_hint(checker_name)
         super().__init__(
-            f"Checker '{checker_name}' is not installed or not found on PATH.\n"
-            f"To install: {hint}"
+            f"Checker '{checker_name}' is not installed or not found on PATH.\nTo install: {hint}"
         )
         self.checker_name = checker_name
 
@@ -176,8 +175,7 @@ def run_checkers(
         thread_name_prefix="rety-checker",
     ) as executor:
         futures = [
-            executor.submit(_run_one, adapter, paths, effective_cwd)
-            for adapter in available
+            executor.submit(_run_one, adapter, paths, effective_cwd) for adapter in available
         ]
         # Collect in submission order, not completion order.
         return [future.result() for future in futures]

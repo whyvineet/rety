@@ -211,9 +211,7 @@ class PyreflyAdapter(CheckerAdapter):
         name = obj.get("name")
         code = str(name) if name else None
 
-        message = str(
-            obj.get("description") or obj.get("concise_description") or ""
-        )
+        message = str(obj.get("description") or obj.get("concise_description") or "")
 
         return NormalizedDiagnostic(
             checker="pyrefly",

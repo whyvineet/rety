@@ -432,8 +432,7 @@ def _score_cluster(
         elif _ranges_overlap(d1, d2, tolerance=0):
             has_overlap = True
             signals.append(
-                f"overlapping ranges: {d1.checker} L{r1[0]}-{r1[1]} "
-                f"↔ {d2.checker} L{r2[0]}-{r2[1]}"
+                f"overlapping ranges: {d1.checker} L{r1[0]}-{r1[1]} ↔ {d2.checker} L{r2[0]}-{r2[1]}"
             )
         elif (anchor := _shared_anchor(e1, e2)) is not None:
             signals.append(f"same {anchor.label()}: {pair}")

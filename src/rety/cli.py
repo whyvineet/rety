@@ -231,8 +231,7 @@ def check(
     for result in results:
         if result.error is not None:
             click.echo(
-                f"Warning: {result.checker_name} encountered an unexpected error: "
-                f"{result.error}",
+                f"Warning: {result.checker_name} encountered an unexpected error: {result.error}",
                 err=True,
             )
 
