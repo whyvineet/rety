@@ -3,9 +3,9 @@
     "time": "1790189167251",
     "generalDiagnostics": [
         {
-            "file": "d:\\rety\\rety\\tests\\fixtures\\basic_errors.py",
+            "file": "/home/runner/work/rety/rety/tests/fixtures/basic_errors.py",
             "severity": "error",
-            "message": "Type \"str\" is not assignable to return type \"int\"\n  \"str\" is not assignable to \"int\"",
+            "message": "Type \"str\" is not assignable to return type \"int\"\n  \"str\" is not assignable to \"int\"",
             "range": {
                 "start": {
                     "line": 8,
@@ -19,9 +19,9 @@
             "rule": "reportReturnType"
         },
         {
-            "file": "d:\\rety\\rety\\tests\\fixtures\\basic_errors.py",
+            "file": "/home/runner/work/rety/rety/tests/fixtures/basic_errors.py",
             "severity": "error",
-            "message": "Type \"Literal['a']\" is not assignable to declared type \"int\"\n  \"Literal['a']\" is not assignable to \"int\"",
+            "message": "Type \"Literal['a']\" is not assignable to declared type \"int\"\n  \"Literal['a']\" is not assignable to \"int\"",
             "range": {
                 "start": {
                     "line": 11,
@@ -35,7 +35,7 @@
             "rule": "reportAssignmentType"
         },
         {
-            "file": "d:\\rety\\rety\\tests\\fixtures\\basic_errors.py",
+            "file": "/home/runner/work/rety/rety/tests/fixtures/basic_errors.py",
             "severity": "error",
             "message": "\"undefined_name\" is not defined",
             "range": {

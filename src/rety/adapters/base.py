@@ -17,6 +17,7 @@ Extension point:
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
@@ -24,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rety.schema import NormalizedDiagnostic, RawInvocation
+
+_WINDOWS_ABS_PATH_RE = re.compile(r"^[A-Za-z]:[/\\]")
 
 
 def resolve_path(file_raw: str, cwd: str | None) -> str:
@@ -36,6 +39,8 @@ def resolve_path(file_raw: str, cwd: str | None) -> str:
     cwd to run_checkers() therefore get correct file paths. With cwd None the
     process cwd is used.
     """
+    if _WINDOWS_ABS_PATH_RE.match(file_raw):
+        return file_raw
     path = Path(file_raw)
     if not path.is_absolute() and cwd:
         path = Path(cwd) / path

@@ -123,9 +123,7 @@ def _render_header(con: Console, report: ComparisonReport) -> None:
     for checker in report.checkers_run:
         style = _CHECKER_STYLES.get(checker, "bold")
         version = report.checker_versions.get(checker) or "?"
-        checker_parts.append(
-            f"[{style}]{rich_escape(checker)}[/] {rich_escape(version)}"
-        )
+        checker_parts.append(f"[{style}]{rich_escape(checker)}[/] {rich_escape(version)}")
 
     checkers_str = "   ".join(checker_parts)
     con.print()
@@ -163,9 +161,7 @@ def _render_summary_table(con: Console, report: ComparisonReport) -> None:
         checker_counts = counts.get(checker, {})
         errors = checker_counts.get(Severity.error, 0)
         warnings_ = checker_counts.get(Severity.warning, 0)
-        notes = checker_counts.get(Severity.note, 0) + checker_counts.get(
-            Severity.information, 0
-        )
+        notes = checker_counts.get(Severity.note, 0) + checker_counts.get(Severity.information, 0)
         total = errors + warnings_ + notes
         c_style = _CHECKER_STYLES.get(checker, "bold")
 
