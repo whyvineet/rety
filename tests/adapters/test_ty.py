@@ -7,7 +7,7 @@ The captured fixtures in tests/fixtures/captured/ty/ are real ty output
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
@@ -104,7 +104,7 @@ def test_parse_windows_absolute_path_keeps_drive_letter() -> None:
     (d,) = ADAPTER.parse(_make_raw(line))
     assert d.start_line == 2
     assert d.start_col == 12
-    assert Path(d.file).name == "foo.py"
+    assert PureWindowsPath(d.file).name == "foo.py"
     assert d.raw == line
 
 
