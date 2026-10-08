@@ -320,6 +320,9 @@ class ComparisonReport(BaseModel):
     paths: list[str] = Field(default_factory=list)
     """Paths passed to the checkers, exactly as given on the command line."""
 
+    python: str | None = None
+    """The --python interpreter every checker was pointed at, if any."""
+
     line_tolerance: int = 0
     """The --line-tolerance used for clustering."""
 

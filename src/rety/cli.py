@@ -138,6 +138,18 @@ def _ensure_utf8_streams() -> None:
     help="Seconds to wait for each checker before giving up on it. 0 = no limit.",
 )
 @click.option(
+    "--python",
+    "python",
+    type=click.Path(exists=True),
+    default=None,
+    metavar="PATH",
+    help=(
+        "Python interpreter every checker should use to resolve third-party "
+        "imports, e.g. .venv/bin/python. Without it each "
+        "checker finds one its own way and they can disagree about imports."
+    ),
+)
+@click.option(
     "--fail-on",
     type=click.Choice(["none", "error", "any"], case_sensitive=False),
     default="none",
@@ -157,6 +169,7 @@ def check(
     verbose: bool,
     require_all: bool,
     timeout: float,
+    python: str | None,
     fail_on: str,
 ) -> None:
     """Run type checkers on PATH(s) and compare their diagnostics.
@@ -193,7 +206,9 @@ def check(
 
     # Parse and validate checker names
     checker_names = _parse_checker_names(checker)
-    adapters = [ALL_ADAPTERS[name](timeout=timeout or None) for name in checker_names]
+    adapters = [
+        ALL_ADAPTERS[name](timeout=timeout or None, python=python) for name in checker_names
+    ]
 
     # Run checkers concurrently
     try:
@@ -276,6 +291,7 @@ def check(
         rety_version=__version__,
         cwd=invocation_cwd,
         paths=list(paths),
+        python=python,
         line_tolerance=line_tolerance,
         checkers_run=checkers_run,
         checker_errors=checker_errors,

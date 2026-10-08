@@ -56,6 +56,7 @@ def test_render_produces_documented_top_level_shape() -> None:
         "rety_version",
         "cwd",
         "paths",
+        "python",
         "line_tolerance",
         "checkers_run",
         "checker_errors",

@@ -73,6 +73,8 @@ _SEVERITY_MAP: dict[str, Severity] = {
 class PyreflyAdapter(CheckerAdapter):
     """Adapter for Pyrefly (https://pyrefly.org/)."""
 
+    python_flag = "--python-interpreter-path"
+
     @property
     def name(self) -> str:
         return "pyrefly"
@@ -111,7 +113,7 @@ class PyreflyAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = [self.executable, "check", "--output-format", "json", *paths]
+        cmd = [self.executable, "check", "--output-format", "json", *self.python_args(), *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

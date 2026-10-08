@@ -140,8 +140,26 @@ class CheckerAdapter(ABC):
     _version_cache: str | None = None
     _version_probed: bool = False
 
-    def __init__(self, timeout: float | None = None) -> None:
+    #: The checker's CLI flag that selects the Python interpreter used to
+    #: resolve third-party imports. None if the checker has no such flag.
+    python_flag: str | None = None
+
+    def __init__(self, timeout: float | None = None, python: str | None = None) -> None:
         self.timeout = timeout
+        self.python = python
+
+    def python_args(self) -> list[str]:
+        """
+        Arguments that point the checker at `self.python`, if set.
+
+        Each checker otherwise finds an interpreter its own way (mypy uses
+        the one it is installed in, which for `uv tool install mypy` can't
+        see the project's dependencies), so they disagree about imports for
+        reasons that have nothing to do with typing.
+        """
+        if self.python is None or self.python_flag is None:
+            return []
+        return [self.python_flag, self.python]
 
     @property
     @abstractmethod

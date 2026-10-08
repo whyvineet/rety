@@ -106,6 +106,8 @@ class TyAdapter(CheckerAdapter):
     parser for the ``concise`` format. See the module docstring.
     """
 
+    python_flag = "--python"
+
     @property
     def name(self) -> str:
         return "ty"
@@ -162,7 +164,7 @@ class TyAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = [self.executable, "check", "--output-format", "concise", *paths]
+        cmd = [self.executable, "check", "--output-format", "concise", *self.python_args(), *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

@@ -56,6 +56,7 @@ rety check --checker mypy,pyright src/   # run specific checkers
 rety check --format json src/            # machine-readable output
 rety check --verbose src/                # show why diagnostics were grouped
 rety check --fail-on error src/          # exit 1 on errors (for CI)
+rety check --python .venv/bin/python src/  # make every checker use your project's environment
 ```
 
 Exit codes: `0` done, `1` `--fail-on` threshold met, `2` usage error or no checker available, `3` a checker crashed, timed out or rejected its config (the report is incomplete).

@@ -155,3 +155,41 @@ def test_parse_version_output(output: str, name: str, expected: str) -> None:
     from rety.adapters.base import parse_version_output
 
     assert parse_version_output(output, name) == expected
+
+
+@pytest.mark.parametrize(
+    ("adapter_name", "flag"),
+    [
+        ("mypy", "--python-executable"),
+        ("pyright", "--pythonpath"),
+        ("pyrefly", "--python-interpreter-path"),
+        ("ty", "--python"),
+    ],
+)
+def test_python_option_is_passed_with_each_checkers_own_flag(
+    monkeypatch: pytest.MonkeyPatch, adapter_name: str, flag: str
+) -> None:
+    import subprocess
+
+    from rety.adapters import ALL_ADAPTERS
+
+    adapter = ALL_ADAPTERS[adapter_name](python="/venv/bin/python")
+    seen: list[list[str]] = []
+
+    def fake_run(cmd: list[str], cwd: str, **_kw: object) -> subprocess.CompletedProcess[str]:
+        seen.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(adapter, "_run_subprocess", fake_run)
+    monkeypatch.setattr(adapter, "detect_version", lambda: "1.0")
+    adapter.run(["src"], cwd=".")
+
+    (cmd,) = seen
+    assert cmd[cmd.index(flag) + 1] == "/venv/bin/python"
+    assert cmd[-1] == "src"
+
+
+def test_no_python_option_adds_no_arguments() -> None:
+    from rety.adapters.mypy import MypyAdapter
+
+    assert MypyAdapter().python_args() == []

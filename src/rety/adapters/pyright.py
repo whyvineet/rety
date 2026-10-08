@@ -71,6 +71,8 @@ _SEVERITY_MAP: dict[str, Severity] = {
 class PyrightAdapter(CheckerAdapter):
     """Adapter for Pyright (https://github.com/microsoft/pyright)."""
 
+    python_flag = "--pythonpath"
+
     @property
     def name(self) -> str:
         return "pyright"
@@ -109,7 +111,7 @@ class PyrightAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = [self.executable, "--outputjson", *paths]
+        cmd = [self.executable, "--outputjson", *self.python_args(), *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

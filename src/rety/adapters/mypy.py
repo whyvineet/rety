@@ -63,6 +63,8 @@ _SEVERITY_MAP: dict[str, Severity] = {
 class MypyAdapter(CheckerAdapter):
     """Adapter for mypy (https://mypy-lang.org/)."""
 
+    python_flag = "--python-executable"
+
     @property
     def name(self) -> str:
         return "mypy"
@@ -118,6 +120,7 @@ class MypyAdapter(CheckerAdapter):
                 "--output=json",
                 "--no-incremental",
                 f"--cache-dir={cache_dir}",
+                *self.python_args(),
                 *paths,
             ]
             result = self._run_subprocess(cmd, cwd)
