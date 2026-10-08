@@ -291,6 +291,10 @@ def _render_footer(con: Console, report: ComparisonReport, m: int) -> None:
 
 def _short_path(path: str) -> str:
     """Return a display-friendly path (relative to cwd if shorter)."""
+    if not path:
+        # Project-level diagnostics (a config error, a duplicate module) can
+        # come without a file; don't print an empty header for them.
+        return "(no file)"
     try:
         return str(Path(path).relative_to(Path.cwd()))
     except ValueError:
