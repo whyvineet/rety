@@ -335,6 +335,32 @@ def _ranges_overlap(
     return s1 <= e2 + tolerance and s2 <= e1 + tolerance
 
 
+def _columns_disagree(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> bool:
+    """
+    True if two diagnostics on the same single line clearly point at
+    different places: both report a start column and neither start column
+    falls inside the other's column span. Two arguments of one call, say.
+
+    Unknown columns never disagree: ty reports no end column, and a checker
+    with no column at all gives no evidence either way.
+    """
+    if d1.start_line != d2.start_line or d1.start_col is None or d2.start_col is None:
+        return False
+    if d1.start_col == d2.start_col:
+        return False
+    return not (_col_in_span(d1.start_col, d2) or _col_in_span(d2.start_col, d1))
+
+
+def _col_in_span(col: int, d: NormalizedDiagnostic) -> bool:
+    """True if col lies in d's [start_col, end_col) span on d's start line."""
+    assert d.start_col is not None
+    if d.end_col is None or (d.end_line is not None and d.end_line != d.start_line):
+        # Unknown or multi-line end: only the start column is reliable, and
+        # it was already compared; anything to its right may be inside.
+        return col >= d.start_col
+    return d.start_col <= col < d.end_col
+
+
 # ---------------------------------------------------------------------------
 # Greedy range-overlap clustering
 # ---------------------------------------------------------------------------
@@ -427,11 +453,13 @@ def _score_cluster(
     Assign a confidence level and produce alignment signals for a cluster.
 
     Confidence rules:
-        HIGH   — at least one cross-checker pair with exactly matching line ranges
+        HIGH   — at least one cross-checker pair with exactly matching line
+                 ranges whose known columns agree (see _columns_disagree)
         MEDIUM — at least one cross-checker pair with overlapping ranges (not exact)
         LOW    — cross-checker pairs were joined only through a shared anchor
-                 node, line tolerance, or other members; or the cluster holds
-                 diagnostics from a single checker only
+                 node, line tolerance, other members, or a shared line with
+                 different columns; or the cluster holds diagnostics from a
+                 single checker only
 
     Only pairs from *different* checkers count. Two diagnostics from the same
     checker on the same line say nothing about agreement between checkers, so
@@ -464,7 +492,12 @@ def _score_cluster(
         r2 = _effective_range(d2)
         pair = f"{d1.checker} L{d1.start_line} ↔ {d2.checker} L{d2.start_line}"
 
-        if r1 == r2:
+        if r1 == r2 and _columns_disagree(d1, d2):
+            signals.append(
+                f"same line, different columns: {d1.checker} L{d1.start_line}:{d1.start_col}"
+                f" ↔ {d2.checker} L{d2.start_line}:{d2.start_col}"
+            )
+        elif r1 == r2:
             has_exact = True
             signals.append(f"exact range L{r1[0]}-{r1[1]}: {d1.checker} ↔ {d2.checker}")
         elif _ranges_overlap(d1, d2, tolerance=0):

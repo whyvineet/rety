@@ -52,6 +52,7 @@ def diag(
     *,
     file: str = FAKE_FILE,
     col: int | None = None,
+    end_col: int | None = None,
     severity: Severity = Severity.error,
     code: str | None = None,
     message: str = "test diagnostic",
@@ -64,7 +65,7 @@ def diag(
         start_line=start_line,
         start_col=col,
         end_line=end_line,
-        end_col=None,
+        end_col=end_col,
         severity=severity,
         code=code,
         message=message,
@@ -545,3 +546,42 @@ def test_columns_after_non_ascii_text_find_the_right_statement(tmp_path: Path) -
     assert node_type == "Call"
     # Only `b = int(1)` and its Call contain the position, not `a = 'ééééé'`.
     assert {(a.node_type, a.start_col) for a in anchors} == {("Assign", 13), ("Call", 17)}
+
+
+# ---------------------------------------------------------------------------
+# Column evidence on a shared line
+# ---------------------------------------------------------------------------
+
+
+def test_same_line_different_columns_is_not_high() -> None:
+    """mypy flags argument 1, Pyright flags argument 2 of the same call."""
+    (c,) = align(
+        [
+            diag("mypy", 3, 3, col=3, end_col=6),
+            diag("pyright", 3, 3, col=8, end_col=11),
+        ]
+    )
+
+    assert c.confidence == Confidence.LOW
+    assert c.alignment_signals == ["same line, different columns: mypy L3:3 ↔ pyright L3:8"]
+
+
+def test_same_token_on_same_line_is_high() -> None:
+    (c,) = align([diag("mypy", 3, 3, col=8, end_col=11), diag("pyright", 3, 3, col=8, end_col=11)])
+    assert c.confidence == Confidence.HIGH
+
+
+def test_start_column_inside_other_span_is_high() -> None:
+    """mypy blames the whole call, Pyright the argument inside it."""
+    (c,) = align([diag("mypy", 3, 3, col=1, end_col=20), diag("pyright", 3, 3, col=8, end_col=11)])
+    assert c.confidence == Confidence.HIGH
+
+
+def test_unknown_columns_fall_back_to_line_match() -> None:
+    (c,) = align([diag("mypy", 3, 3), diag("ty", 3, col=12)])
+    assert c.confidence == Confidence.HIGH
+
+
+def test_ty_without_end_column_left_of_other_span_still_matches() -> None:
+    (c,) = align([diag("ty", 3, col=4), diag("pyright", 3, 3, col=8, end_col=11)])
+    assert c.confidence == Confidence.HIGH

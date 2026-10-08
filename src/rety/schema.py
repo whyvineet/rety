@@ -59,12 +59,14 @@ class Confidence(StrEnum):
     Only pairs of diagnostics from *different* checkers count as evidence.
 
     HIGH   — two different checkers report diagnostics with exactly matching
-             source ranges (same start_line, same end_line).
+             source ranges (same start_line, same end_line) whose columns,
+             where both are known, point at the same place.
     MEDIUM — two different checkers report diagnostics with overlapping (but
              not identical) source ranges.
     LOW    — cross-checker members were joined only through a shared enclosing
-             AST node instance, --line-tolerance, or other members; or the
-             cluster holds diagnostics from a single checker only.
+             AST node instance, --line-tolerance, other members, or a shared
+             line whose columns point at different places; or the cluster
+             holds diagnostics from a single checker only.
     """
 
     HIGH = "high"
