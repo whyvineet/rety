@@ -1,0 +1,28 @@
+{
+  "errors": [
+    {
+      "line": 29,
+      "column": 12,
+      "stop_line": 29,
+      "stop_column": 24,
+      "path": "tests/fixtures/forward_references.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `NoneType` has no attribute `value`",
+      "concise_description": "Object of class `NoneType` has no attribute `value`",
+      "severity": "error"
+    },
+    {
+      "line": 35,
+      "column": 12,
+      "stop_line": 35,
+      "stop_column": 24,
+      "path": "tests/fixtures/forward_references.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `NoneType` has no attribute `value`",
+      "concise_description": "Object of class `NoneType` has no attribute `value`",
+      "severity": "error"
+    }
+  ]
+}

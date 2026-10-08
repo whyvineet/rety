@@ -1,0 +1,4 @@
+{"file": "tests\\fixtures\\assignment_narrowing.py", "line": 20, "column": 16, "end_line": 20, "end_column": 17, "message": "Revealed type is \"int\"", "hint": null, "code": "misc", "severity": "note"}
+{"file": "tests\\fixtures\\assignment_narrowing.py", "line": 30, "column": 16, "end_line": 30, "end_column": 17, "message": "Revealed type is \"int | str\"", "hint": null, "code": "misc", "severity": "note"}
+{"file": "tests\\fixtures\\assignment_narrowing.py", "line": 39, "column": 16, "end_line": 39, "end_column": 20, "message": "Revealed type is \"int | str\"", "hint": null, "code": "misc", "severity": "note"}
+{"file": "tests\\fixtures\\assignment_narrowing.py", "line": 42, "column": 13, "end_line": 42, "end_column": 19, "message": "Incompatible types in assignment (expression has type \"int | str\", variable has type \"int\")", "hint": null, "code": "assignment", "severity": "error"}

@@ -1,0 +1,114 @@
+[
+  {
+    "lines": [
+      40,
+      40
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Assign",
+    "scope": "manipulate_config",
+    "codes": {
+      "mypy": [
+        "typeddict-unknown-key"
+      ],
+      "pyright": [
+        "reportGeneralTypeIssues"
+      ],
+      "pyrefly": [
+        "bad-typed-dict-key"
+      ],
+      "ty": [
+        "invalid-key"
+      ]
+    }
+  },
+  {
+    "lines": [
+      43,
+      43
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Assign",
+    "scope": "manipulate_config",
+    "codes": {
+      "mypy": [
+        "typeddict-item"
+      ],
+      "pyright": [
+        "reportGeneralTypeIssues"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  },
+  {
+    "lines": [
+      49,
+      49
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "AnnAssign",
+    "scope": "manipulate_config",
+    "codes": {
+      "mypy": [
+        "typeddict-item"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-typed-dict-key"
+      ],
+      "ty": [
+        "missing-typed-dict-key"
+      ]
+    }
+  },
+  {
+    "lines": [
+      58,
+      58
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Return",
+    "scope": "dynamic_key",
+    "codes": {
+      "mypy": [
+        "literal-required"
+      ],
+      "pyrefly": [
+        "bad-typed-dict-key"
+      ],
+      "ty": [
+        "invalid-key"
+      ]
+    }
+  }
+]

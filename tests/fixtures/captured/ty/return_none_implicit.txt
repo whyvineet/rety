@@ -1,0 +1,4 @@
+tests\fixtures\return_none_implicit.py:27:30: error[invalid-return-type] Function can implicitly return `None`, which is not assignable to return type `int`
+tests\fixtures\return_none_implicit.py:34:42: error[invalid-return-type] Function can implicitly return `None`, which is not assignable to return type `str`
+tests\fixtures\return_none_implicit.py:48:35: error[invalid-return-type] Function can implicitly return `None`, which is not assignable to return type `str`
+Found 3 diagnostics

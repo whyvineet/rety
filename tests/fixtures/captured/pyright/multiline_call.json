@@ -1,0 +1,62 @@
+{
+    "version": "1.1.414",
+    "time": "1791437725856",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\multiline_call.py",
+            "severity": "error",
+            "message": "Argument of type \"list[str]\" cannot be assigned to parameter \"items\" of type \"list[int]\" in function \"process\"\n  \"Literal['a']\" is not assignable to \"int\"\n  \"Literal['b']\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 17,
+                    "character": 4
+                },
+                "end": {
+                    "line": 17,
+                    "character": 14
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\multiline_call.py",
+            "severity": "error",
+            "message": "Argument of type \"Literal[42]\" cannot be assigned to parameter \"label\" of type \"str\" in function \"process\"\n  \"Literal[42]\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 18,
+                    "character": 4
+                },
+                "end": {
+                    "line": 18,
+                    "character": 6
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\multiline_call.py",
+            "severity": "error",
+            "message": "Argument of type \"list[str]\" cannot be assigned to parameter \"items\" of type \"list[int]\" in function \"process\"\n  \"list[str]\" is not assignable to \"list[int]\"\n    Type parameter \"_T@list\" is invariant, but \"str\" is not the same as \"int\"\n    Consider switching from \"list\" to \"Sequence\" which is covariant",
+            "range": {
+                "start": {
+                    "line": 22,
+                    "character": 4
+                },
+                "end": {
+                    "line": 22,
+                    "character": 26
+                }
+            },
+            "rule": "reportArgumentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 3,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.556
+    }
+}
+

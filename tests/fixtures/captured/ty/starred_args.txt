@@ -1,0 +1,4 @@
+tests\fixtures\starred_args.py:36:15: error[invalid-argument-type] Argument to function `takes_two` is incorrect: Expected `str`, found `Literal[2]`
+tests\fixtures\starred_args.py:36:15: error[too-many-positional-arguments] Too many positional arguments to function `takes_two`: expected 2, got 3
+tests\fixtures\starred_args.py:49:15: error[invalid-argument-type] Argument to function `takes_two` is incorrect: Expected `str`, found `int`
+Found 3 diagnostics

@@ -1,0 +1,8 @@
+tests\fixtures\assignment_narrowing.py:20:5: warning[undefined-reveal] `reveal_type` used without importing it
+tests\fixtures\assignment_narrowing.py:20:17: info[revealed-type] Revealed type: `Literal[42]`
+tests\fixtures\assignment_narrowing.py:30:5: warning[undefined-reveal] `reveal_type` used without importing it
+tests\fixtures\assignment_narrowing.py:30:17: info[revealed-type] Revealed type: `Literal["hello", 42]`
+tests\fixtures\assignment_narrowing.py:39:5: warning[undefined-reveal] `reveal_type` used without importing it
+tests\fixtures\assignment_narrowing.py:39:17: info[revealed-type] Revealed type: `int | str`
+tests\fixtures\assignment_narrowing.py:42:14: error[invalid-assignment] Object of type `int | str` is not assignable to `int`
+Found 7 diagnostics

@@ -1,0 +1,4 @@
+tests\fixtures\overload_arity.py:36:13: error[no-matching-overload] No overload of function `process` matches arguments
+tests\fixtures\overload_arity.py:37:12: error[no-matching-overload] No overload of function `process` matches arguments
+tests\fixtures\overload_arity.py:40:19: error[invalid-assignment] Object of type `str` is not assignable to `int`
+Found 3 diagnostics

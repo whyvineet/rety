@@ -1,0 +1,7 @@
+tests\fixtures\dataclass_fields.py:35:5: error[invalid-assignment] Object of type `None` is not assignable to attribute `label` of type `str`
+tests\fixtures\dataclass_fields.py:36:5: error[invalid-assignment] Object of type `Literal["not a float"]` is not assignable to attribute `x` of type `float`
+tests\fixtures\dataclass_fields.py:39:5: error[invalid-attribute-access] Cannot assign to ClassVar `count` from an instance of type `Point`
+tests\fixtures\dataclass_fields.py:44:19: error[invalid-argument-type] Argument to bound method `list.append` is incorrect: Expected `str`, found `Literal[42]`
+tests\fixtures\dataclass_fields.py:55:34: error[invalid-argument-type] Argument is incorrect: Expected `int`, found `Literal["8080"]`
+tests\fixtures\dataclass_fields.py:56:17: error[invalid-argument-type] Argument is incorrect: Expected `str`, found `Literal[42]`
+Found 6 diagnostics

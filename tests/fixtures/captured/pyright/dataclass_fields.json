@@ -1,0 +1,110 @@
+{
+    "version": "1.1.414",
+    "time": "1791437670746",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dataclass_fields.py",
+            "severity": "error",
+            "message": "Cannot assign to attribute \"label\" for class \"Point\"\n  \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 34,
+                    "character": 14
+                },
+                "end": {
+                    "line": 34,
+                    "character": 18
+                }
+            },
+            "rule": "reportAttributeAccessIssue"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dataclass_fields.py",
+            "severity": "error",
+            "message": "Cannot assign to attribute \"x\" for class \"Point\"\n  \"Literal['not a float']\" is not assignable to \"float\"",
+            "range": {
+                "start": {
+                    "line": 35,
+                    "character": 10
+                },
+                "end": {
+                    "line": 35,
+                    "character": 23
+                }
+            },
+            "rule": "reportAttributeAccessIssue"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dataclass_fields.py",
+            "severity": "error",
+            "message": "Cannot assign to attribute \"count\" for class \"Point\"\n  Attribute \"count\" cannot be assigned through a class instance because it is a ClassVar",
+            "range": {
+                "start": {
+                    "line": 38,
+                    "character": 6
+                },
+                "end": {
+                    "line": 38,
+                    "character": 11
+                }
+            },
+            "rule": "reportAttributeAccessIssue"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dataclass_fields.py",
+            "severity": "error",
+            "message": "Argument of type \"Literal[42]\" cannot be assigned to parameter \"object\" of type \"str\" in function \"append\"\n  \"Literal[42]\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 43,
+                    "character": 18
+                },
+                "end": {
+                    "line": 43,
+                    "character": 20
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dataclass_fields.py",
+            "severity": "error",
+            "message": "Argument of type \"Literal['8080']\" cannot be assigned to parameter \"port\" of type \"int\" in function \"__init__\"\n  \"Literal['8080']\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 54,
+                    "character": 38
+                },
+                "end": {
+                    "line": 54,
+                    "character": 44
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dataclass_fields.py",
+            "severity": "error",
+            "message": "Argument of type \"Literal[42]\" cannot be assigned to parameter \"host\" of type \"str\" in function \"__init__\"\n  \"Literal[42]\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 55,
+                    "character": 21
+                },
+                "end": {
+                    "line": 55,
+                    "character": 23
+                }
+            },
+            "rule": "reportArgumentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 6,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 1.004
+    }
+}
+

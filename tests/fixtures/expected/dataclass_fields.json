@@ -1,0 +1,176 @@
+[
+  {
+    "lines": [
+      35,
+      35
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Assign",
+    "scope": "use_point",
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAttributeAccessIssue"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  },
+  {
+    "lines": [
+      36,
+      36
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Assign",
+    "scope": "use_point",
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAttributeAccessIssue"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  },
+  {
+    "lines": [
+      39,
+      39
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Assign",
+    "scope": "use_point",
+    "codes": {
+      "mypy": [
+        "misc"
+      ],
+      "pyright": [
+        "reportAttributeAccessIssue"
+      ],
+      "pyrefly": [
+        "read-only"
+      ],
+      "ty": [
+        "invalid-attribute-access"
+      ]
+    }
+  },
+  {
+    "lines": [
+      44,
+      44
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "use_point",
+    "codes": {
+      "mypy": [
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      55,
+      55
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "make_config",
+    "codes": {
+      "mypy": [
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      56,
+      56
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "make_config",
+    "codes": {
+      "mypy": [
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  }
+]

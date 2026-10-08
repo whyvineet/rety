@@ -1,0 +1,62 @@
+{
+    "version": "1.1.414",
+    "time": "1791437740324",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\none_coercion.py",
+            "severity": "error",
+            "message": "Argument of type \"str | None\" cannot be assigned to parameter \"obj\" of type \"Sized\" in function \"len\"\n  Type \"str | None\" is not assignable to type \"Sized\"\n    \"None\" is incompatible with protocol \"Sized\"\n      \"__len__\" is not present",
+            "range": {
+                "start": {
+                    "line": 29,
+                    "character": 16
+                },
+                "end": {
+                    "line": 29,
+                    "character": 20
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\none_coercion.py",
+            "severity": "error",
+            "message": "\"strip\" is not a known attribute of \"None\"",
+            "range": {
+                "start": {
+                    "line": 32,
+                    "character": 18
+                },
+                "end": {
+                    "line": 32,
+                    "character": 23
+                }
+            },
+            "rule": "reportOptionalMemberAccess"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\none_coercion.py",
+            "severity": "error",
+            "message": "\"strip\" is not a known attribute of \"None\"",
+            "range": {
+                "start": {
+                    "line": 40,
+                    "character": 19
+                },
+                "end": {
+                    "line": 40,
+                    "character": 24
+                }
+            },
+            "rule": "reportOptionalMemberAccess"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 3,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.525
+    }
+}
+

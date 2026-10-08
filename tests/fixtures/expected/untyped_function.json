@@ -1,0 +1,42 @@
+[
+  {
+    "lines": [
+      20,
+      21
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly"
+    ],
+    "confidence": "medium",
+    "node": "FunctionDef",
+    "scope": "add_items",
+    "codes": {
+      "mypy": [
+        "no-untyped-def"
+      ],
+      "pyrefly": [
+        "unannotated-return",
+        "implicit-any-parameter",
+        "implicit-any-parameter"
+      ]
+    }
+  },
+  {
+    "lines": [
+      24,
+      24
+    ],
+    "checkers": [
+      "mypy"
+    ],
+    "confidence": "low",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "no-untyped-call"
+      ]
+    }
+  }
+]

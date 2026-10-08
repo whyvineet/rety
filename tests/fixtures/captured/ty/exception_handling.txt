@@ -1,0 +1,2 @@
+tests\fixtures\exception_handling.py:20:16: error[invalid-return-type] Function can implicitly return `None`, which is not assignable to return type `int`
+Found 1 diagnostic

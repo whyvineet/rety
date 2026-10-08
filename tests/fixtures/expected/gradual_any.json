@@ -1,0 +1,23 @@
+[
+  {
+    "lines": [
+      24,
+      24
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly"
+    ],
+    "confidence": "high",
+    "node": "Return",
+    "scope": "process",
+    "codes": {
+      "mypy": [
+        "no-any-return"
+      ],
+      "pyrefly": [
+        "no-any-return-implicit"
+      ]
+    }
+  }
+]

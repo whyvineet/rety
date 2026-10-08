@@ -1,0 +1,46 @@
+{
+    "version": "1.1.414",
+    "time": "1791437696566",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\forward_references.py",
+            "severity": "error",
+            "message": "\"value\" is not a known attribute of \"None\"",
+            "range": {
+                "start": {
+                    "line": 28,
+                    "character": 18
+                },
+                "end": {
+                    "line": 28,
+                    "character": 23
+                }
+            },
+            "rule": "reportOptionalMemberAccess"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\forward_references.py",
+            "severity": "error",
+            "message": "\"value\" is not a known attribute of \"None\"",
+            "range": {
+                "start": {
+                    "line": 34,
+                    "character": 18
+                },
+                "end": {
+                    "line": 34,
+                    "character": 23
+                }
+            },
+            "rule": "reportOptionalMemberAccess"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 2,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 1.054
+    }
+}
+

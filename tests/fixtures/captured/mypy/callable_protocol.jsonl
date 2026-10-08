@@ -1,0 +1,1 @@
+{"file": "tests\\fixtures\\callable_protocol.py", "line": 41, "column": 13, "end_line": 41, "end_column": 23, "message": "Argument 1 to \"use_callable\" has incompatible type \"Callable[[int], None]\"; expected \"HasCall\"", "hint": "\"HasCall.__call__\" has type \"def __call__(self, x: int) -> str\"", "code": "arg-type", "severity": "error"}

@@ -1,0 +1,3 @@
+{"file": "tests\\fixtures\\return_none_implicit.py", "line": 27, "column": 0, "end_line": 29, "end_column": 17, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}
+{"file": "tests\\fixtures\\return_none_implicit.py", "line": 34, "column": 0, "end_line": 37, "end_column": 23, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}
+{"file": "tests\\fixtures\\return_none_implicit.py", "line": 48, "column": 0, "end_line": 55, "end_column": 21, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}

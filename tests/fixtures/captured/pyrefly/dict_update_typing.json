@@ -1,0 +1,52 @@
+{
+  "errors": [
+    {
+      "line": 40,
+      "column": 7,
+      "stop_line": 40,
+      "stop_column": 16,
+      "path": "tests/fixtures/dict_update_typing.py",
+      "code": -2,
+      "name": "bad-typed-dict-key",
+      "description": "TypedDict `Config` does not have key `timeout`",
+      "concise_description": "TypedDict `Config` does not have key `timeout`",
+      "severity": "error"
+    },
+    {
+      "line": 43,
+      "column": 17,
+      "stop_line": 43,
+      "stop_column": 19,
+      "path": "tests/fixtures/dict_update_typing.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`Literal[42]` is not assignable to TypedDict key `host` with type `str`",
+      "concise_description": "`Literal[42]` is not assignable to TypedDict key `host` with type `str`",
+      "severity": "error"
+    },
+    {
+      "line": 49,
+      "column": 26,
+      "stop_line": 49,
+      "stop_column": 47,
+      "path": "tests/fixtures/dict_update_typing.py",
+      "code": -2,
+      "name": "bad-typed-dict-key",
+      "description": "Missing required key `port` for TypedDict `Config`",
+      "concise_description": "Missing required key `port` for TypedDict `Config`",
+      "severity": "error"
+    },
+    {
+      "line": 58,
+      "column": 14,
+      "stop_line": 58,
+      "stop_column": 17,
+      "path": "tests/fixtures/dict_update_typing.py",
+      "code": -2,
+      "name": "bad-typed-dict-key",
+      "description": "Invalid key for TypedDict `Config`, got `str`",
+      "concise_description": "Invalid key for TypedDict `Config`, got `str`",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+    "version": "1.1.414",
+    "time": "1791437747430",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\overload_arity.py",
+            "severity": "error",
+            "message": "No overloads for \"process\" match the provided arguments",
+            "range": {
+                "start": {
+                    "line": 35,
+                    "character": 12
+                },
+                "end": {
+                    "line": 35,
+                    "character": 25
+                }
+            },
+            "rule": "reportCallIssue"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\overload_arity.py",
+            "severity": "error",
+            "message": "Argument of type \"float\" cannot be assigned to parameter \"x\" of type \"str\" in function \"process\"\n  \"float\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 35,
+                    "character": 20
+                },
+                "end": {
+                    "line": 35,
+                    "character": 24
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\overload_arity.py",
+            "severity": "error",
+            "message": "No overloads for \"process\" match the provided arguments",
+            "range": {
+                "start": {
+                    "line": 36,
+                    "character": 11
+                },
+                "end": {
+                    "line": 36,
+                    "character": 24
+                }
+            },
+            "rule": "reportCallIssue"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\overload_arity.py",
+            "severity": "error",
+            "message": "Argument of type \"None\" cannot be assigned to parameter \"x\" of type \"str\" in function \"process\"\n  \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 36,
+                    "character": 19
+                },
+                "end": {
+                    "line": 36,
+                    "character": 23
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\overload_arity.py",
+            "severity": "error",
+            "message": "Type \"str\" is not assignable to declared type \"int\"\n  \"str\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 39,
+                    "character": 18
+                },
+                "end": {
+                    "line": 39,
+                    "character": 29
+                }
+            },
+            "rule": "reportAssignmentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 5,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.708
+    }
+}
+

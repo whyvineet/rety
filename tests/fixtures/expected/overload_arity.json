@@ -1,0 +1,91 @@
+[
+  {
+    "lines": [
+      36,
+      36
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "call-overload"
+      ],
+      "pyright": [
+        "reportCallIssue",
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "no-matching-overload"
+      ],
+      "ty": [
+        "no-matching-overload"
+      ]
+    }
+  },
+  {
+    "lines": [
+      37,
+      37
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "call-overload"
+      ],
+      "pyright": [
+        "reportCallIssue",
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "no-matching-overload"
+      ],
+      "ty": [
+        "no-matching-overload"
+      ]
+    }
+  },
+  {
+    "lines": [
+      40,
+      40
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  }
+]

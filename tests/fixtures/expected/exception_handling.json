@@ -1,0 +1,31 @@
+[
+  {
+    "lines": [
+      20,
+      24
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "FunctionDef",
+    "scope": "risky",
+    "codes": {
+      "mypy": [
+        "return"
+      ],
+      "pyright": [
+        "reportReturnType"
+      ],
+      "pyrefly": [
+        "bad-return"
+      ],
+      "ty": [
+        "invalid-return-type"
+      ]
+    }
+  }
+]

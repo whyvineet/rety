@@ -1,0 +1,76 @@
+{
+  "errors": [
+    {
+      "line": 35,
+      "column": 15,
+      "stop_line": 35,
+      "stop_column": 19,
+      "path": "tests/fixtures/dataclass_fields.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`None` is not assignable to attribute `label` with type `str`",
+      "concise_description": "`None` is not assignable to attribute `label` with type `str`",
+      "severity": "error"
+    },
+    {
+      "line": 36,
+      "column": 11,
+      "stop_line": 36,
+      "stop_column": 24,
+      "path": "tests/fixtures/dataclass_fields.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`Literal['not a float']` is not assignable to attribute `x` with type `float`",
+      "concise_description": "`Literal['not a float']` is not assignable to attribute `x` with type `float`",
+      "severity": "error"
+    },
+    {
+      "line": 39,
+      "column": 5,
+      "stop_line": 39,
+      "stop_column": 12,
+      "path": "tests/fixtures/dataclass_fields.py",
+      "code": -2,
+      "name": "read-only",
+      "description": "Cannot set field `count`\n  A ClassVar may not be mutated from an instance of the class",
+      "concise_description": "Cannot set field `count`",
+      "severity": "error"
+    },
+    {
+      "line": 44,
+      "column": 19,
+      "stop_line": 44,
+      "stop_column": 21,
+      "path": "tests/fixtures/dataclass_fields.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `Literal[42]` is not assignable to parameter `object` with type `str` in function `list.append`",
+      "concise_description": "Argument `Literal[42]` is not assignable to parameter `object` with type `str` in function `list.append`",
+      "severity": "error"
+    },
+    {
+      "line": 55,
+      "column": 39,
+      "stop_line": 55,
+      "stop_column": 45,
+      "path": "tests/fixtures/dataclass_fields.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `Literal['8080']` is not assignable to parameter `port` with type `int` in function `Config.__init__`",
+      "concise_description": "Argument `Literal['8080']` is not assignable to parameter `port` with type `int` in function `Config.__init__`",
+      "severity": "error"
+    },
+    {
+      "line": 56,
+      "column": 22,
+      "stop_line": 56,
+      "stop_column": 24,
+      "path": "tests/fixtures/dataclass_fields.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `Literal[42]` is not assignable to parameter `host` with type `str` in function `Config.__init__`",
+      "concise_description": "Argument `Literal[42]` is not assignable to parameter `host` with type `str` in function `Config.__init__`",
+      "severity": "error"
+    }
+  ]
+}

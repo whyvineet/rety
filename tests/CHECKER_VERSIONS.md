@@ -36,13 +36,18 @@ When a checker version bump changes its output shape:
 
 1. Recapture every fixture with the new version (commands below).
 2. Update the assertions in `tests/adapters/test_<checker>.py` to match.
-3. Update the table above.
-4. Note the schema change in the adapter's module docstring.
+3. Regenerate the end-to-end alignment snapshots in `tests/fixtures/expected/`
+   and review the diff: `RETY_UPDATE_SNAPSHOTS=1 uv run pytest tests/test_captured_end_to_end.py`
+4. Update the table above.
+5. Note the schema change in the adapter's module docstring.
+
+Every `tests/fixtures/*.py` must have a capture from all four checkers;
+`tests/test_captured_end_to_end.py` fails if one is missing.
 
 ```bash
 # Run from the repository root. `uv run --with <tool>` fetches the checker
 # into a temporary environment without installing it globally.
-for f in untyped_function basic_errors; do
+for f in $(cd tests/fixtures && ls *.py | sed 's/\.py$//'); do
   uv run mypy --output=json --no-incremental --cache-dir="$(mktemp -d)" \
       tests/fixtures/$f.py > tests/fixtures/captured/mypy/$f.jsonl
   uv run --with pyright pyright --outputjson \
