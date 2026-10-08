@@ -186,6 +186,10 @@ def run_checkers(
     if not adapters:
         return []
 
+    # A file named "-x.py" would be read as an option by every checker's
+    # argument parser; "./-x.py" names the same file and can't be.
+    paths = [f"./{path}" if path.startswith("-") else path for path in paths]
+
     # Probe availability concurrently: each probe is a `--version` subprocess
     # and Pyright's can take a second or more.
     with ThreadPoolExecutor(

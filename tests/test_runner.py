@@ -217,3 +217,9 @@ def test_require_all_says_when_checker_is_installed_but_broken() -> None:
     broken = FakeAdapter("pyright", available=False, on_path=True)
     with pytest.raises(CheckerUnavailableError, match="'pyright --version' failed"):
         run_checkers([broken], paths=["src"], cwd="/tmp", require_all=True)
+
+
+def test_paths_starting_with_dash_are_not_passed_as_options() -> None:
+    adapter = FakeAdapter("a")
+    run_checkers([adapter], paths=["-weird.py", "src"], cwd="/tmp")
+    assert adapter.seen_paths == ["./-weird.py", "src"]
