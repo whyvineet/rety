@@ -148,6 +148,8 @@ class MypyAdapter(CheckerAdapter):
             try:
                 obj = json.loads(line)
             except json.JSONDecodeError:
+                obj = None
+            if not isinstance(obj, dict):
                 skipped_lines.append(line[:120])  # truncate long lines in warning
                 continue
 
@@ -162,8 +164,8 @@ class MypyAdapter(CheckerAdapter):
 
             # mypy prints paths relative to its cwd when given relative args;
             # resolve against the invocation cwd recorded on RawInvocation.
-            file_raw: str = obj.get("file", "")
-            file_path = resolve_path(file_raw, raw.cwd) if file_raw else ""
+            file_raw = obj.get("file") or ""
+            file_path = resolve_path(str(file_raw), raw.cwd) if file_raw else ""
 
             diagnostics.append(
                 NormalizedDiagnostic(
@@ -175,15 +177,15 @@ class MypyAdapter(CheckerAdapter):
                     end_line=end_line,
                     end_col=end_col,
                     severity=severity,
-                    code=obj.get("code") or None,
-                    message=obj.get("message", ""),
+                    code=str(obj["code"]) if obj.get("code") else None,
+                    message=str(obj.get("message") or ""),
                     raw=line,  # per-diagnostic JSON line, not the full output
                 )
             )
 
         if skipped_lines:
             warnings.warn(
-                f"mypy adapter: {len(skipped_lines)} non-JSON line(s) skipped "
+                f"mypy adapter: {len(skipped_lines)} line(s) that are not JSON objects skipped "
                 f"(likely the syntax-error plain-text fallback of mypy < 2.0; "
                 f"mypy bug #17660). First skipped: {skipped_lines[0]!r}",
                 RuntimeWarning,

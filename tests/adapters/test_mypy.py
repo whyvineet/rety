@@ -188,6 +188,14 @@ def test_parse_tolerates_non_json_lines(recwarn: pytest.WarningsChecker) -> None
     assert "mypy adapter" in str(recwarn.list[0].message)
 
 
+def test_parse_skips_json_lines_that_are_not_objects() -> None:
+    """A bare JSON scalar or array is valid JSON but not a diagnostic; must not crash."""
+    output = "\n".join(["123", '["x"]', "null", _line(file="ok.py", message="real")])
+    with pytest.warns(RuntimeWarning, match="not JSON objects"):
+        diagnostics = ADAPTER.parse(_make_raw(output))
+    assert [d.message for d in diagnostics] == ["real"]
+
+
 def test_parse_all_non_json_produces_empty_with_warning(recwarn: pytest.WarningsChecker) -> None:
     raw = _make_raw("foo.py:1: error: invalid syntax\nbar.py:2: error: unexpected indent")
     assert ADAPTER.parse(raw) == []

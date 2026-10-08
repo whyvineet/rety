@@ -50,6 +50,7 @@ import json
 import subprocess
 import time
 import warnings
+from typing import Any
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -142,47 +143,94 @@ class PyrightAdapter(CheckerAdapter):
             )
             return []
 
+        entries = doc.get("generalDiagnostics") if isinstance(doc, dict) else None
+        if not isinstance(entries, list):
+            warnings.warn(
+                "pyright adapter: JSON output has no 'generalDiagnostics' list. "
+                "This may indicate a Pyright version change; compare against "
+                "tests/fixtures/captured/pyright/.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return []
+
         diagnostics: list[NormalizedDiagnostic] = []
+        skipped = 0
+        for entry in entries:
+            diag = self._parse_single(entry, raw.version, raw.cwd)
+            if diag is None:
+                skipped += 1
+            else:
+                diagnostics.append(diag)
 
-        for diag in doc.get("generalDiagnostics", []):
-            severity_str = diag.get("severity", "error").lower()
-            severity = _SEVERITY_MAP.get(severity_str, Severity.error)
-
-            # Pyright uses 0-indexed LSP-style ranges → convert to 1-indexed.
-            range_obj = diag.get("range", {})
-            start_obj = range_obj.get("start", {})
-            end_obj = range_obj.get("end", {})
-
-            # line: 0-indexed → 1-indexed; character: 0-indexed → 1-indexed
-            start_line: int = start_obj.get("line", 0) + 1
-            start_col: int | None = start_obj.get("character", 0) + 1
-
-            # end position: convert only if present
-            end_line: int | None = end_obj.get("line", 0) + 1 if end_obj else None
-            end_col: int | None = end_obj.get("character", 0) + 1 if end_obj else None
-
-            # Pyright prints absolute paths; resolve anyway to normalize
-            # drive-letter case and separators on Windows.
-            file_raw: str = diag.get("file", "")
-            file_path = resolve_path(file_raw, raw.cwd) if file_raw else ""
-
-            # Store the per-diagnostic dict, not the full generalDiagnostics array.
-            raw_str = json.dumps(diag)
-
-            diagnostics.append(
-                NormalizedDiagnostic(
-                    checker="pyright",
-                    checker_version=raw.version,
-                    file=file_path,
-                    start_line=start_line,
-                    start_col=start_col,
-                    end_line=end_line,
-                    end_col=end_col,
-                    severity=severity,
-                    code=diag.get("rule") or None,  # rule is nullable
-                    message=diag.get("message", ""),
-                    raw=raw_str,
-                )
+        if skipped:
+            warnings.warn(
+                f"pyright adapter: {skipped} entr{'y' if skipped == 1 else 'ies'} "
+                f"in the JSON output lacked a usable range and were skipped. "
+                f"This may indicate a Pyright version change.",
+                RuntimeWarning,
+                stacklevel=2,
             )
 
         return diagnostics
+
+    @staticmethod
+    def _parse_single(
+        obj: Any,
+        version: str | None,
+        raw_cwd: str | None,
+    ) -> NormalizedDiagnostic | None:
+        """Parse one Pyright diagnostic; None if it has no usable start position."""
+        if not isinstance(obj, dict):
+            return None
+
+        range_obj = obj.get("range")
+        if not isinstance(range_obj, dict):
+            return None
+
+        # Pyright uses 0-indexed LSP-style ranges → convert to 1-indexed.
+        start_line, start_col = _position(range_obj.get("start")) or (None, None)
+        if start_line is None:
+            return None  # never invent a position
+        end_line, end_col = _position(range_obj.get("end")) or (None, None)
+
+        severity_str = str(obj.get("severity") or "error").lower()
+        severity = _SEVERITY_MAP.get(severity_str, Severity.error)
+
+        # Pyright prints absolute paths; resolve anyway to normalize
+        # drive-letter case and separators on Windows.
+        file_raw = obj.get("file") or ""
+        file_path = resolve_path(str(file_raw), raw_cwd) if file_raw else ""
+
+        rule = obj.get("rule")  # absent when there is no rule
+
+        return NormalizedDiagnostic(
+            checker="pyright",
+            checker_version=version,
+            file=file_path,
+            start_line=start_line,
+            start_col=start_col,
+            end_line=end_line,
+            end_col=end_col,
+            severity=severity,
+            code=str(rule) if rule else None,
+            message=str(obj.get("message") or ""),
+            raw=json.dumps(obj),  # per-diagnostic sub-object, not the full document
+        )
+
+
+def _position(obj: Any) -> tuple[int | None, int | None] | None:
+    """
+    Convert a 0-indexed LSP position {"line", "character"} to 1-indexed
+    (line, col). None if obj is not a position; a missing or non-integer
+    field becomes None rather than a guessed 1.
+    """
+    if not isinstance(obj, dict):
+        return None
+    return _zero_to_one(obj.get("line")), _zero_to_one(obj.get("character"))
+
+
+def _zero_to_one(value: Any) -> int | None:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        return None
+    return value + 1
