@@ -20,10 +20,14 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import signal
 import subprocess
+import sys
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from rety.schema import NormalizedDiagnostic, RawInvocation
 
@@ -225,15 +229,88 @@ class CheckerAdapter(ABC):
         which is expected and normal. Raises subprocess.TimeoutExpired if the
         checker exceeds `timeout` (default: self.timeout); the runner turns
         that into a CheckerResult.error.
+
+        The checker runs in its own process group so that a timeout (or
+        kill_running_checkers() on Ctrl+C) kills the whole process tree.
+        subprocess.run(timeout=...) kills only the direct child: Pyright runs
+        as a wrapper (pyright.cmd or the PyPI shim) around `node`, and on
+        Windows run() then blocks in communicate() until the orphaned node
+        process exits and releases the pipes.
         """
-        return subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             # Checkers write UTF-8. Without an explicit encoding, text=True
             # decodes with the locale code page (cp1252 on Windows), which
             # turns Pyright's non-breaking spaces into "Â " mojibake.
             encoding="utf-8",
             errors="replace",
             cwd=cwd,
-            timeout=timeout if timeout is not None else self.timeout,
+            **_new_process_group_kwargs(),
         )
+        with _running_lock:
+            _running.add(proc)
+        try:
+            stdout, stderr = proc.communicate(
+                timeout=timeout if timeout is not None else self.timeout
+            )
+        except subprocess.TimeoutExpired as exc:
+            _kill_tree(proc)
+            exc.stdout, exc.stderr = proc.communicate()
+            raise
+        except BaseException:
+            _kill_tree(proc)
+            raise
+        finally:
+            with _running_lock:
+                _running.discard(proc)
+        return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+
+
+# ---------------------------------------------------------------------------
+# Process-tree management
+# ---------------------------------------------------------------------------
+
+_running: set[subprocess.Popen[str]] = set()
+_running_lock = threading.Lock()
+
+
+def _new_process_group_kwargs() -> dict[str, Any]:
+    """Popen arguments that put the child in a new process group / session."""
+    if sys.platform == "win32":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _kill_tree(proc: subprocess.Popen[str]) -> None:
+    """Kill proc and every process it started. Never raises."""
+    if proc.poll() is not None:
+        return
+    try:
+        if sys.platform == "win32":
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+                timeout=30,
+            )
+        else:
+            os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        proc.kill()  # fallback if the tree kill was unavailable
+    except OSError:
+        pass
+
+
+def kill_running_checkers() -> None:
+    """
+    Kill every checker subprocess still running. Called on Ctrl+C: because
+    checkers run in their own process group, the terminal's interrupt does
+    not reach them.
+    """
+    with _running_lock:
+        procs = list(_running)
+    for proc in procs:
+        _kill_tree(proc)

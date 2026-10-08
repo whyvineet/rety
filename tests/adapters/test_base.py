@@ -65,3 +65,72 @@ def test_run_subprocess_decodes_utf8_regardless_of_locale() -> None:
     result = MypyAdapter()._run_subprocess([sys.executable, "-c", code], cwd=".")
 
     assert result.stdout == "a b → c"
+
+
+def test_timeout_kills_grandchild_that_holds_the_pipes(tmp_path: Path) -> None:
+    """
+    Pyright runs as a wrapper around `node`. A timeout must kill the whole
+    tree: otherwise Windows blocks until node exits, and POSIX leaks it.
+    """
+    import subprocess
+    import sys
+    import time
+
+    from rety.adapters.mypy import MypyAdapter
+
+    pid_file = tmp_path / "grandchild.pid"
+    code = (
+        "import subprocess, sys, time\n"
+        "g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        f"open({str(pid_file)!r}, 'w').write(str(g.pid))\n"
+        "time.sleep(60)\n"
+    )
+
+    start = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        MypyAdapter()._run_subprocess([sys.executable, "-c", code], cwd=".", timeout=2)
+    assert time.monotonic() - start < 20
+
+    if os.name != "nt":
+        grandchild = int(pid_file.read_text())
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            try:
+                os.kill(grandchild, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("grandchild process survived the timeout")
+
+
+def test_kill_running_checkers_stops_a_running_subprocess() -> None:
+    import sys
+    import threading
+    import time
+
+    from rety.adapters import base
+    from rety.adapters.mypy import MypyAdapter
+
+    errors: list[BaseException] = []
+
+    def run() -> None:
+        try:
+            MypyAdapter()._run_subprocess(
+                [sys.executable, "-c", "import time; time.sleep(60)"], cwd="."
+            )
+        except BaseException as exc:  # pragma: no cover - only on failure
+            errors.append(exc)
+
+    thread = threading.Thread(target=run)
+    start = time.monotonic()
+    thread.start()
+    while not base._running and time.monotonic() - start < 10:
+        time.sleep(0.05)
+
+    base.kill_running_checkers()
+    thread.join(timeout=20)
+
+    assert not thread.is_alive()
+    assert time.monotonic() - start < 20
+    assert not errors

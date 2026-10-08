@@ -37,7 +37,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from rety.adapters.base import CheckerAdapter
+from rety.adapters.base import CheckerAdapter, kill_running_checkers
 from rety.schema import NormalizedDiagnostic, RawInvocation
 
 # ---------------------------------------------------------------------------
@@ -199,8 +199,15 @@ def run_checkers(
         futures = [
             executor.submit(_run_one, adapter, paths, effective_cwd) for adapter in available
         ]
-        # Collect in submission order, not completion order.
-        return [future.result() for future in futures]
+        try:
+            # Collect in submission order, not completion order.
+            return [future.result() for future in futures]
+        except KeyboardInterrupt:
+            # Leaving the `with` block waits for every worker; kill the
+            # checkers first so Ctrl+C returns promptly instead of after the
+            # slowest checker finishes.
+            kill_running_checkers()
+            raise
 
 
 def _run_one(
