@@ -44,7 +44,9 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import io
 import itertools
+import tokenize
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -202,13 +204,30 @@ def _get_index(file_path: str) -> _FileIndex | None:
 
     index: _FileIndex | None
     try:
-        tree = ast.parse(content.decode("utf-8", errors="replace"))
+        tree = ast.parse(_decode_source(content))
         index = _build_index(tree)
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         index = None
 
     _index_cache[key] = index
     return index
+
+
+def _decode_source(content: bytes) -> str:
+    """
+    Decode Python source the way the interpreter does: honour a UTF-8 BOM
+    (detect_encoding returns "utf-8-sig", which strips it) and a PEP 263
+    coding cookie. A plain .decode("utf-8") keeps the BOM as U+FEFF, which
+    ast.parse rejects.
+    """
+    try:
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(content).readline)
+    except SyntaxError:  # unknown or conflicting coding cookie
+        encoding = "utf-8"
+    try:
+        return content.decode(encoding, errors="replace")
+    except LookupError:
+        return content.decode("utf-8", errors="replace")
 
 
 def _lookup(

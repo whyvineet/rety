@@ -509,3 +509,21 @@ def test_most_common_tie_break_does_not_depend_on_hash_seed() -> None:
     }
 
     assert outputs == {"Call"}  # first-seen value wins a tie
+
+
+def test_file_with_utf8_bom_is_still_enriched(tmp_path: Path) -> None:
+    target = tmp_path / "bom.py"
+    target.write_bytes(b"\xef\xbb\xbfx = int(\n    '1')\n")
+
+    (c,) = align([diag("mypy", 1, file=str(target), col=5)])
+
+    assert c.enclosing_node_type == "Call"
+
+
+def test_file_with_latin1_coding_cookie_is_enriched(tmp_path: Path) -> None:
+    target = tmp_path / "latin.py"
+    target.write_bytes(b"# -*- coding: latin-1 -*-\ns = '\xe9'\nn = int(s)\n")
+
+    (c,) = align([diag("mypy", 3, file=str(target), col=5)])
+
+    assert c.enclosing_node_type == "Call"
