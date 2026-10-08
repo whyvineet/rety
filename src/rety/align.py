@@ -51,6 +51,7 @@ from collections import Counter, OrderedDict, defaultdict
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 
+from rety.crosswalk import lookup_code_family
 from rety.schema import (
     Confidence,
     DiagnosticCluster,
@@ -305,12 +306,17 @@ def _enrich_diagnostics(
     file_path: str,
 ) -> list[_Enriched]:
     """
-    Attach enclosing_node_type and enclosing_scope to each diagnostic and
-    pair it with its anchor spans. Returns new objects (the model is frozen).
+    Attach code_family (from the crosswalk), enclosing_node_type and
+    enclosing_scope to each diagnostic and pair it with its anchor spans.
+    Returns new objects (the model is frozen).
 
     If the file can't be indexed, the diagnostics are returned unchanged with
     no anchors.
     """
+    diagnostics = [
+        diag.model_copy(update={"code_family": lookup_code_family(diag.checker, diag.code)})
+        for diag in diagnostics
+    ]
     index = _get_index(file_path)
     if index is None:
         return [_Enriched(diag, frozenset()) for diag in diagnostics]
@@ -490,7 +496,9 @@ def _score_cluster(
     Confidence rules:
         HIGH   — at least one cross-checker pair with exactly matching line
                  ranges whose known columns agree (see _columns_disagree)
-        MEDIUM — at least one cross-checker pair with overlapping ranges (not exact)
+        MEDIUM — at least one cross-checker pair with overlapping ranges (not
+                 exact), or joined by a shared anchor node or line tolerance
+                 with the same crosswalk code family (rety/crosswalk.py)
         LOW    — cross-checker pairs were joined only through a shared anchor
                  node, line tolerance, other members, or a shared line with
                  different columns; or the cluster holds diagnostics from a
@@ -517,6 +525,7 @@ def _score_cluster(
 
     has_exact = False
     has_overlap = False
+    has_family = False  # a weak pair (anchor/tolerance) shares a crosswalk family
 
     for e1, e2 in itertools.combinations(members, 2):
         d1, d2 = e1.diag, e2.diag
@@ -551,9 +560,13 @@ def _score_cluster(
                 f"overlapping ranges: {d1.checker} L{r1[0]}-{r1[1]} ↔ {d2.checker} L{r2[0]}-{r2[1]}"
             )
         elif (anchor := _shared_anchor(e1, e2)) is not None:
-            signals.append(f"same {anchor.label()}: {pair}")
+            family = _shared_family(d1, d2)
+            has_family = has_family or family is not None
+            signals.append(f"same {anchor.label()}{_family_note(family)}: {pair}")
         elif tolerance and _ranges_overlap(d1, d2, tolerance):
-            signals.append(f"within {tolerance} line(s): {pair}")
+            family = _shared_family(d1, d2)
+            has_family = has_family or family is not None
+            signals.append(f"within {tolerance} line(s){_family_note(family)}: {pair}")
         else:
             signals.append(f"linked through other members: {pair}")
 
@@ -563,9 +576,20 @@ def _score_cluster(
 
     if has_exact:
         return Confidence.HIGH, signals
-    if has_overlap:
+    if has_overlap or has_family:
         return Confidence.MEDIUM, signals
     return Confidence.LOW, signals
+
+
+def _shared_family(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> str | None:
+    """The crosswalk code family both diagnostics belong to, if any."""
+    if d1.code_family is not None and d1.code_family == d2.code_family:
+        return d1.code_family
+    return None
+
+
+def _family_note(family: str | None) -> str:
+    return f", same code family '{family}'" if family else ""
 
 
 # ---------------------------------------------------------------------------

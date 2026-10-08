@@ -674,3 +674,45 @@ def test_ast_cache_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         align_module._get_index(str(target))
 
     assert len(align_module._index_cache) == 3
+
+
+# ---------------------------------------------------------------------------
+# Crosswalk code families
+# ---------------------------------------------------------------------------
+
+
+def test_same_code_family_raises_anchor_match_to_medium() -> None:
+    call_line = _line_of("process(")
+    arg_line = _line_of("    42,")
+
+    (c,) = align(
+        [
+            diag("mypy", call_line, file=MULTILINE_FILE, code="arg-type"),
+            diag("pyright", arg_line, file=MULTILINE_FILE, code="reportArgumentType"),
+        ]
+    )
+
+    assert c.confidence == Confidence.MEDIUM
+    assert any("same code family 'argument-type'" in s for s in c.alignment_signals)
+    assert {d.code_family for d in c.diagnostics} == {"argument-type"}
+
+
+def test_different_code_family_leaves_anchor_match_low() -> None:
+    call_line = _line_of("process(")
+    arg_line = _line_of("    42,")
+
+    (c,) = align(
+        [
+            diag("mypy", call_line, file=MULTILINE_FILE, code="arg-type"),
+            diag("pyright", arg_line, file=MULTILINE_FILE, code="reportReturnType"),
+        ]
+    )
+
+    assert c.confidence == Confidence.LOW
+
+
+def test_code_family_alone_never_groups_diagnostics() -> None:
+    clusters = align(
+        [diag("mypy", 10, code="arg-type"), diag("ty", 30, code="invalid-argument-type")]
+    )
+    assert len(clusters) == 2

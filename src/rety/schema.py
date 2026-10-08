@@ -62,7 +62,9 @@ class Confidence(StrEnum):
              source ranges (same start_line, same end_line) whose columns,
              where both are known, point at the same place.
     MEDIUM — two different checkers report diagnostics with overlapping (but
-             not identical) source ranges.
+             not identical) source ranges, or diagnostics joined by a shared
+             AST node or --line-tolerance whose codes are in the same
+             crosswalk family.
     LOW    — cross-checker members were joined only through a shared enclosing
              AST node instance, --line-tolerance, other members, or a shared
              line whose columns point at different places; or the cluster
@@ -183,9 +185,9 @@ class NormalizedDiagnostic(BaseModel):
 
     code_family: str | None = None
     """
-    Cross-checker code family name from the error-code crosswalk table.
-    Always None in v0.1 — populated by rety/crosswalk.py in v0.2.
-    Locked here so the alignment engine interface doesn't need to change in v0.2.
+    Cross-checker code family name from the error-code crosswalk table
+    (rety/data/crosswalk.toml), e.g. "argument-type". Set by the alignment
+    engine, not by adapters. None if the code has no mapping.
     """
 
     message: str
