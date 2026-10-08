@@ -178,7 +178,7 @@ class MypyAdapter(CheckerAdapter):
                     end_col=end_col,
                     severity=severity,
                     code=str(obj["code"]) if obj.get("code") else None,
-                    message=str(obj.get("message") or ""),
+                    message=_message_with_hint(obj),
                     raw=line,  # per-diagnostic JSON line, not the full output
                 )
             )
@@ -193,6 +193,19 @@ class MypyAdapter(CheckerAdapter):
             )
 
         return diagnostics
+
+
+def _message_with_hint(obj: dict[str, Any]) -> str:
+    """
+    The message plus mypy's "hint" (the follow-up notes mypy attaches to an
+    error, e.g. which stub package to install), on following lines. Pyright
+    and Pyrefly put the same kind of detail in multi-line messages.
+    """
+    message = str(obj.get("message") or "")
+    hint = obj.get("hint")
+    if hint:
+        return f"{message}\n{hint}" if message else str(hint)
+    return message
 
 
 def _as_int(value: Any, default: int) -> int:

@@ -253,3 +253,15 @@ def test_relative_file_resolves_against_invocation_cwd(tmp_path: Path) -> None:
     )
     (d,) = ADAPTER.parse(raw)
     assert d.file == str((tmp_path / "pkg" / "mod.py").resolve())
+
+
+def test_hint_is_kept_after_the_message() -> None:
+    """Real mypy 2.3.1 output for a missing stub package."""
+    hint = 'Hint: "python3 -m pip install types-PyYAML"\n(or run "mypy --install-types")'
+    (d,) = ADAPTER.parse(_make_raw(_line(message="Library stubs not installed", hint=hint)))
+    assert d.message == f"Library stubs not installed\n{hint}"
+
+
+def test_null_hint_leaves_message_unchanged() -> None:
+    (d,) = ADAPTER.parse(_make_raw(_line(message="plain", hint=None)))
+    assert d.message == "plain"
