@@ -63,9 +63,11 @@ class AdapterCapabilities:
     """
     Describes what structured data a checker adapter can produce.
 
-    Used by the alignment engine and renderers to adjust expectations —
-    e.g., don't penalize a ty cluster for missing end_col when ty's
-    concise format doesn't emit end positions.
+    Informational, for library callers and adapter authors. The alignment
+    engine does not read it: it works from each diagnostic's own fields, so
+    a missing end position is visible as end_line/end_col being None (and a
+    ty diagnostic with no end line is matched on its start line instead of
+    being capped at MEDIUM confidence).
     """
 
     has_end_col: bool = False

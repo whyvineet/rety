@@ -617,3 +617,16 @@ def test_two_wide_diagnostics_still_match_on_full_range() -> None:
 def test_wide_diagnostic_matches_its_first_line_with_tolerance() -> None:
     (c,) = align([diag("mypy", 10, 20), diag("ty", 11)], line_tolerance=1)
     assert c.checkers_present == ["mypy", "ty"]
+
+
+def test_ty_without_end_line_can_be_high_against_multiline_range() -> None:
+    """ty's concise format has no end line; matching start lines is full evidence."""
+    (c,) = align([diag("pyright", 20, 22), diag("ty", 20)])
+
+    assert c.confidence == Confidence.HIGH
+    assert c.alignment_signals == ["same start line L20 (ty reports no end line): pyright ↔ ty"]
+
+
+def test_ty_on_a_later_line_of_multiline_range_is_still_medium() -> None:
+    (c,) = align([diag("pyright", 20, 22), diag("ty", 21)])
+    assert c.confidence == Confidence.MEDIUM

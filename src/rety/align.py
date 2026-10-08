@@ -366,6 +366,14 @@ def _columns_disagree(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> boo
     return not (_col_in_span(d1.start_col, d2) or _col_in_span(d2.start_col, d1))
 
 
+def _same_start_unknown_end(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> bool:
+    """True if the start lines match, exactly one side reports no end line,
+    and known columns don't point at different places."""
+    if d1.start_line != d2.start_line or (d1.end_line is None) == (d2.end_line is None):
+        return False
+    return not _columns_disagree(d1, d2)
+
+
 def _col_in_span(col: int, d: NormalizedDiagnostic) -> bool:
     """True if col lies in d's [start_col, end_col) span on d's start line."""
     assert d.start_col is not None
@@ -515,6 +523,16 @@ def _score_cluster(
         elif r1 == r2:
             has_exact = True
             signals.append(f"exact range L{r1[0]}-{r1[1]}: {d1.checker} ↔ {d2.checker}")
+        elif _same_start_unknown_end(d1, d2):
+            # ty's concise format has no end line, so it can never match a
+            # multi-line range exactly. Matching start lines is the most
+            # evidence it can give; don't cap it at MEDIUM for that.
+            has_exact = True
+            no_end = d1.checker if d1.end_line is None else d2.checker
+            signals.append(
+                f"same start line L{d1.start_line} ({no_end} reports no end line): "
+                f"{d1.checker} ↔ {d2.checker}"
+            )
         elif _ranges_overlap(d1, d2, tolerance=0):
             has_overlap = True
             signals.append(
