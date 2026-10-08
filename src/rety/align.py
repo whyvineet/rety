@@ -87,6 +87,10 @@ _SCOPE_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 # call with diagnostics at both ends from merging on anchor evidence alone.
 _AST_MERGE_PROXIMITY = 3
 
+# A diagnostic spanning more lines than this is "wide" and matches narrow
+# diagnostics by its first line only (see _ranges_overlap).
+_WIDE_SPAN_LINES = 3
+
 
 # ---------------------------------------------------------------------------
 # AST index
@@ -327,11 +331,22 @@ def _ranges_overlap(
     """
     True if d1 and d2 are in the same file and their line ranges overlap or
     are within `tolerance` lines of each other.
+
+    A wide diagnostic (more than _WIDE_SPAN_LINES lines, e.g. mypy's "Missing
+    return statement", which spans the whole function) matches a narrow one
+    only by its first line. Otherwise every diagnostic inside that function
+    body would chain into one cluster with it. Two wide diagnostics still
+    compare on their full ranges.
     """
     if d1.file != d2.file:
         return False
     s1, e1 = _effective_range(d1)
     s2, e2 = _effective_range(d2)
+    wide1 = e1 - s1 > _WIDE_SPAN_LINES
+    wide2 = e2 - s2 > _WIDE_SPAN_LINES
+    if wide1 != wide2:
+        e1 = s1 if wide1 else e1
+        e2 = s2 if wide2 else e2
     return s1 <= e2 + tolerance and s2 <= e1 + tolerance
 
 

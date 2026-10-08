@@ -585,3 +585,35 @@ def test_unknown_columns_fall_back_to_line_match() -> None:
 def test_ty_without_end_column_left_of_other_span_still_matches() -> None:
     (c,) = align([diag("ty", 3, col=4), diag("pyright", 3, 3, col=8, end_col=11)])
     assert c.confidence == Confidence.HIGH
+
+
+# ---------------------------------------------------------------------------
+# Wide diagnostics must not chain unrelated ones together
+# ---------------------------------------------------------------------------
+
+
+def test_wide_diagnostic_does_not_swallow_body_diagnostics() -> None:
+    """mypy's 'Missing return statement' spans the whole function (real output)."""
+    clusters = align(
+        [
+            diag("mypy", 48, 55),  # missing return, whole function
+            diag("pyrefly", 48),  # same issue, def line only
+            diag("pyright", 51),  # unrelated error inside the body
+            diag("ty", 51),
+        ]
+    )
+
+    assert [sorted(c.checkers_present) for c in clusters] == [
+        ["mypy", "pyrefly"],
+        ["pyright", "ty"],
+    ]
+
+
+def test_two_wide_diagnostics_still_match_on_full_range() -> None:
+    (c,) = align([diag("mypy", 10, 20), diag("pyright", 11, 20)])
+    assert c.confidence == Confidence.MEDIUM
+
+
+def test_wide_diagnostic_matches_its_first_line_with_tolerance() -> None:
+    (c,) = align([diag("mypy", 10, 20), diag("ty", 11)], line_tolerance=1)
+    assert c.checkers_present == ["mypy", "ty"]
