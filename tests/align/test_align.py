@@ -648,3 +648,17 @@ def test_cluster_id_for_file_outside_root_uses_full_path(tmp_path: Path) -> None
     (inside,) = align([diag("mypy", 7, file=FAKE_FILE)], root=str(tmp_path))
     (plain,) = align([diag("mypy", 7, file=FAKE_FILE)])
     assert inside.cluster_id == plain.cluster_id
+
+
+def test_enclosing_scope_is_qualified_with_outer_classes(tmp_path: Path) -> None:
+    target = tmp_path / "scopes.py"
+    target.write_text(
+        "class Config:\n"
+        "    def __init__(self) -> None:\n"
+        "        def helper() -> int:\n"
+        "            return 'x'\n"
+    )
+
+    (c,) = align([diag("mypy", 4, file=str(target), col=13)])
+
+    assert c.enclosing_scope == "Config.__init__.helper"

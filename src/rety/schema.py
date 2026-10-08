@@ -211,8 +211,9 @@ class NormalizedDiagnostic(BaseModel):
 
     enclosing_scope: str | None = None
     """
-    The name of the nearest enclosing function or class. None until enrichment,
-    or None if the diagnostic is at module level.
+    Dotted name of the nearest enclosing function or class, including the
+    classes and functions around it (e.g. "Config.__init__"). None until
+    enrichment, or None if the diagnostic is at module level.
     """
 
     @model_validator(mode="after")

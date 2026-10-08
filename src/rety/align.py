@@ -176,13 +176,18 @@ def _build_index(tree: ast.Module, lines: list[str]) -> _FileIndex:
     scopes_by_line: dict[int, list[tuple[int, str]]] = defaultdict(list)
 
     # Explicit stack instead of recursion: deeply nested expressions can
-    # exceed the interpreter recursion limit.
-    stack: list[tuple[ast.AST, int]] = [(tree, 0)]
+    # exceed the interpreter recursion limit. Each entry carries the dotted
+    # name of its enclosing scope ("Config.__init__"), so a bare "__init__"
+    # never leaves the reader guessing which class it belongs to.
+    stack: list[tuple[ast.AST, int, str]] = [(tree, 0, "")]
     while stack:
-        node, depth = stack.pop()
+        node, depth, scope_prefix = stack.pop()
         for child in ast.iter_child_nodes(node):
             child_depth = depth + 1
-            stack.append((child, child_depth))
+            child_prefix = scope_prefix
+            if isinstance(child, _SCOPE_TYPES):
+                child_prefix = f"{scope_prefix}.{child.name}" if scope_prefix else child.name
+            stack.append((child, child_depth, child_prefix))
 
             start = getattr(child, "lineno", None)
             end = getattr(child, "end_lineno", None)
@@ -205,7 +210,7 @@ def _build_index(tree: ast.Module, lines: list[str]) -> _FileIndex:
 
             if isinstance(child, _SCOPE_TYPES):
                 for line in range(start, end + 1):
-                    scopes_by_line[line].append((child_depth, child.name))
+                    scopes_by_line[line].append((child_depth, child_prefix))
 
     return _FileIndex(dict(nodes_by_line), dict(scopes_by_line))
 
