@@ -109,6 +109,11 @@ class CheckerAdapter(ABC):
     #: loaded machine.
     version_probe_timeout: float = 30.0
 
+    #: Exit codes that mean "the checker ran to completion" (0 = clean,
+    #: 1 = diagnostics found for every supported checker). Any other code with
+    #: no parsed diagnostics is treated as a failed run, not as "no issues".
+    ok_returncodes: frozenset[int] = frozenset({0, 1})
+
     _version_cache: str | None = None
     _version_probed: bool = False
 

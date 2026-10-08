@@ -19,6 +19,7 @@ Usage examples:
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 
 import click
@@ -179,6 +180,8 @@ def check(
         0  run completed and the --fail-on threshold was not met
         1  the --fail-on threshold was met
         2  usage error, no checker available, or --require-all not satisfied
+        3  a checker crashed, timed out or failed on its config; the report
+           is printed but is incomplete
     """
     if output and output_format != "json":
         raise click.UsageError("--output is only valid with --format json.")
@@ -226,12 +229,14 @@ def check(
         )
         sys.exit(2)
 
-    # Report any adapter errors (non-zero returncode is normal; unexpected
-    # exceptions are worth surfacing as warnings)
+    # A failed checker (crash, timeout, config error) is not "a checker that
+    # found nothing": keep it out of checkers_run so it never counts toward M.
+    checker_errors: dict[str, str] = {}
     for result in results:
         if result.error is not None:
+            checker_errors[result.checker_name] = _describe_error(result.error)
             click.echo(
-                f"Warning: {result.checker_name} encountered an unexpected error: {result.error}",
+                f"Error: {result.checker_name} failed: {checker_errors[result.checker_name]}",
                 err=True,
             )
 
@@ -242,6 +247,8 @@ def check(
     all_diagnostics = []
 
     for result in results:
+        if result.error is not None:
+            continue
         name = result.checker_name
         checkers_run.append(name)
         checker_versions[name] = result.invocation.version
@@ -254,6 +261,7 @@ def check(
     # Build the comparison report
     report = ComparisonReport(
         checkers_run=checkers_run,
+        checker_errors=checker_errors,
         checker_versions=checker_versions,
         total_diagnostics=total_diagnostics,
         clusters=clusters,
@@ -269,6 +277,11 @@ def check(
     else:
         terminal.render(report, verbose=verbose)
 
+    # A failed checker means the comparison is incomplete; never let that pass
+    # silently as a clean run (or as a passing --fail-on gate).
+    if checker_errors:
+        sys.exit(3)
+
     if _fail_threshold_met(report, fail_on.lower()):
         sys.exit(1)
 
@@ -276,6 +289,14 @@ def check(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _describe_error(error: Exception) -> str:
+    """One-line description of a checker failure for stderr and the report."""
+    if isinstance(error, subprocess.TimeoutExpired):
+        return f"timed out after {error.timeout:g} seconds (see --timeout)"
+    message = " ".join(str(error).split())
+    return message or type(error).__name__
 
 
 def _fail_threshold_met(report: ComparisonReport, fail_on: str) -> bool:

@@ -126,6 +126,44 @@ def test_duplicate_checker_names_run_once(
     assert report["total_diagnostics"] == {"mypy": 1, "pyright": 1}
 
 
+def test_failed_checker_is_not_counted_and_exits_3(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ok = FakeAdapter("mypy")
+    broken = FakeAdapter("pyright", returncode=3, stdout="", stderr="bad config")
+    monkeypatch.setattr(
+        cli, "ALL_ADAPTERS", {"mypy": lambda **_kw: ok, "pyright": lambda **_kw: broken}
+    )
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--format", "json", "--checker", "mypy,pyright", str(target)]
+    )
+
+    assert result.exit_code == 3
+    assert "pyright failed" in result.stderr
+    report = json.loads(result.stdout)
+    assert report["checkers_run"] == ["mypy"]
+    assert "pyright" in report["checker_errors"]
+    assert "bad config" in report["checker_errors"]["pyright"]
+
+
+def test_timed_out_checker_message_mentions_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    slow = FakeAdapter("mypy", timeout_after=5)
+    monkeypatch.setattr(cli, "ALL_ADAPTERS", {"mypy": lambda **_kw: slow})
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(cli.main, ["check", "--checker", "mypy", str(target)])
+
+    assert result.exit_code == 3
+    assert "timed out after 5 seconds" in result.stderr
+    assert "failed: mypy" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # --fail-on exit codes
 # ---------------------------------------------------------------------------

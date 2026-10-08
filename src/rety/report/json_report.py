@@ -9,6 +9,7 @@ Output structure:
     {
         "schema_version": 1,
         "checkers_run": ["mypy", "pyright", ...],
+        "checker_errors": {"ty": "ty exited with code 2: ..."},
         "checker_versions": {"mypy": "1.x.x", ...},
         "total_diagnostics": {"mypy": 12, ...},
         "clusters": [

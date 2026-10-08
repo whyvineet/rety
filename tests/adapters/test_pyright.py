@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from rety.adapters.pyright import PyrightAdapter
 from rety.schema import RawInvocation, Severity
 
@@ -155,8 +157,9 @@ def test_parse_severity_warning_mapped_correctly() -> None:
     assert d.severity == Severity.warning
 
 
-def test_parse_malformed_json_returns_empty() -> None:
-    assert ADAPTER.parse(_make_raw("this is not json at all")) == []
+def test_parse_malformed_json_warns_and_returns_empty() -> None:
+    with pytest.warns(RuntimeWarning, match="not valid JSON"):
+        assert ADAPTER.parse(_make_raw("this is not json at all")) == []
 
 
 def test_parse_checker_name_is_pyright() -> None:

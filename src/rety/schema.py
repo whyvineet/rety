@@ -307,7 +307,14 @@ class ComparisonReport(BaseModel):
     schema_version: int = Field(default=SCHEMA_VERSION)
 
     checkers_run: list[str]
-    """Names of the checkers that were actually invoked (not all four, if fewer were available)."""
+    """
+    Names of the checkers that ran to completion (not all four, if fewer were
+    available). A checker that crashed, timed out or failed on its config is
+    listed in checker_errors instead, so it never counts toward M in "N/M".
+    """
+
+    checker_errors: dict[str, str] = Field(default_factory=dict)
+    """Checkers that were invoked but failed, mapped to the failure message."""
 
     checker_versions: dict[str, str | None]
     """Detected version per checker. Value is None if version detection failed."""

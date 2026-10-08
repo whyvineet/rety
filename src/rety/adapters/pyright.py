@@ -49,6 +49,7 @@ from __future__ import annotations
 import json
 import subprocess
 import time
+import warnings
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
@@ -130,7 +131,15 @@ class PyrightAdapter(CheckerAdapter):
 
         try:
             doc = json.loads(raw.stdout)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            warnings.warn(
+                f"pyright adapter: stdout is not valid JSON ({exc.msg} at char "
+                f"{exc.pos}). Pyright may have failed before analysis (config "
+                f"error, bad argument) or changed its output format. "
+                f"First 120 chars: {raw.stdout.strip()[:120]!r}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
             return []
 
         diagnostics: list[NormalizedDiagnostic] = []

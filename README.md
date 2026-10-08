@@ -58,6 +58,8 @@ rety check --verbose src/                # show why diagnostics were grouped
 rety check --fail-on error src/          # exit 1 on errors (for CI)
 ```
 
+Exit codes: `0` done, `1` `--fail-on` threshold met, `2` usage error or no checker available, `3` a checker crashed, timed out or rejected its config (the report is incomplete).
+
 ## Development
 
 ```bash

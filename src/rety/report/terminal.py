@@ -126,6 +126,9 @@ def _render_header(con: Console, report: ComparisonReport) -> None:
         checker_parts.append(f"[{style}]{rich_escape(checker)}[/] {rich_escape(version)}")
 
     checkers_str = "   ".join(checker_parts)
+    if report.checker_errors:
+        failed = ", ".join(rich_escape(name) for name in report.checker_errors)
+        checkers_str += f"\n[bold red]failed:[/] {failed} [dim](not counted; see stderr)[/]"
     con.print()
     con.print(
         Panel(

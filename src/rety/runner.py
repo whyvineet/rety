@@ -60,6 +60,26 @@ def install_hint(checker_name: str) -> str:
     return INSTALL_HINTS.get(checker_name, f"Install {checker_name}")
 
 
+class CheckerFailedError(Exception):
+    """
+    Raised (and captured on CheckerResult.error) when a checker exits with a
+    code outside its adapter's ok_returncodes and produced no diagnostics —
+    a config error, crash or unsupported flag, not a clean run.
+    """
+
+    def __init__(self, checker_name: str, returncode: int, output: str) -> None:
+        detail = _tail(output) or "no output"
+        super().__init__(f"{checker_name} exited with code {returncode}: {detail}")
+        self.checker_name = checker_name
+        self.returncode = returncode
+
+
+def _tail(text: str, max_lines: int = 5, max_chars: int = 500) -> str:
+    """Last few non-empty lines of checker output, for an error message."""
+    lines = [line for line in text.strip().splitlines() if line.strip()]
+    return " | ".join(lines[-max_lines:])[-max_chars:]
+
+
 class CheckerUnavailableError(Exception):
     """
     Raised when a required checker is not installed or not on PATH.
@@ -90,8 +110,10 @@ class CheckerResult:
         invocation:   Raw subprocess invocation details (stdout, stderr, timing).
         diagnostics:  Normalized diagnostics parsed from the invocation output.
         error:        Set if the adapter encountered an unexpected error during
-                      run() or parse(). Does NOT include non-zero returncode from
-                      the checker (that's normal when diagnostics are found).
+                      run() or parse() (including a timeout), or if the checker
+                      exited outside adapter.ok_returncodes without producing
+                      any diagnostics (CheckerFailedError). A non-zero code with
+                      diagnostics is normal and is not an error.
     """
 
     adapter: CheckerAdapter
@@ -196,6 +218,17 @@ def _run_one(
     try:
         invocation = adapter.run(paths, cwd)
         diagnostics = adapter.parse(invocation)
+        if invocation.returncode not in adapter.ok_returncodes and not diagnostics:
+            return CheckerResult(
+                adapter=adapter,
+                invocation=invocation,
+                diagnostics=[],
+                error=CheckerFailedError(
+                    adapter.name,
+                    invocation.returncode,
+                    invocation.stderr or invocation.stdout,
+                ),
+            )
         return CheckerResult(
             adapter=adapter,
             invocation=invocation,
