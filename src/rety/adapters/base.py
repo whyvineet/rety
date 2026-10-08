@@ -17,6 +17,7 @@ Extension point:
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -38,8 +39,14 @@ def resolve_path(file_raw: str, cwd: str | None) -> str:
     process's own working directory. Library callers that pass a different
     cwd to run_checkers() therefore get correct file paths. With cwd None the
     process cwd is used.
+
+    Every path goes through Path.resolve(), so on Windows the drive letter
+    case and separators are normalized: Pyright reports "d:\\x.py" where the
+    other checkers report "D:\\x.py", and the alignment engine groups by exact
+    path string. On other hosts a Windows-style path (from captured fixtures)
+    cannot be resolved meaningfully and is returned unchanged.
     """
-    if _WINDOWS_ABS_PATH_RE.match(file_raw):
+    if os.name != "nt" and _WINDOWS_ABS_PATH_RE.match(file_raw):
         return file_raw
     path = Path(file_raw)
     if not path.is_absolute() and cwd:

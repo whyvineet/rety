@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+import pytest
 
 from rety.adapters.base import resolve_path
 
@@ -18,6 +21,21 @@ def test_absolute_path_ignores_cwd(tmp_path: Path) -> None:
 
 def test_missing_cwd_falls_back_to_process_cwd() -> None:
     assert resolve_path("a.py", None) == str(Path("a.py").resolve())
+
+
+@pytest.mark.skipif(os.name != "nt", reason="drive letters exist only on Windows")
+def test_windows_drive_case_and_separators_are_normalized(tmp_path: Path) -> None:
+    """Pyright reports 'd:\\x.py'; mypy/ty report 'D:\\x.py'. Both must match."""
+    target = str((tmp_path / "a.py").resolve())
+    lower_drive = target[0].lower() + target[1:]
+
+    assert resolve_path(lower_drive, None) == target
+    assert resolve_path(target.replace("\\", "/"), None) == target
+
+
+@pytest.mark.skipif(os.name == "nt", reason="non-Windows behaviour")
+def test_windows_path_is_kept_verbatim_on_posix() -> None:
+    assert resolve_path(r"C:\proj\a.py", "/tmp") == r"C:\proj\a.py"
 
 
 def test_executable_resolves_through_shutil_which(monkeypatch) -> None:
