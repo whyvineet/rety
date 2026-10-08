@@ -20,7 +20,7 @@ Output structure:
     └──────────────────────────────────────────────────────────────┘
     [Summary table: checker × severity counts]
     ── src/api.py ──────────────────────────────────────────────────
-      3/4 ● HIGH  L42  in handle_request [Call]
+      3/4  * HIGH  L42  in handle_request  [Call]
            mypy     error  Argument 1 ... [arg-type]
            pyright  error  Argument of type ... [reportArgumentType]
            pyrefly  error  Expected `int`, got `str` [bad-argument-type]

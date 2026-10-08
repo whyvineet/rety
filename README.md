@@ -61,6 +61,19 @@ rety check --python .venv/bin/python src/  # make every checker use your project
 
 Exit codes: `0` done, `1` `--fail-on` threshold met, `2` usage error or no checker available, `3` a checker crashed, timed out or rejected its config (the report is incomplete).
 
+## Use as a library
+
+```python
+from rety import ALL_ADAPTERS, run_checkers
+from rety.align import align
+
+adapters = [ALL_ADAPTERS[name]() for name in ("mypy", "pyright")]
+results = run_checkers(adapters, paths=["src"], cwd="/path/to/project")
+diagnostics = [d for r in results if r.succeeded for d in r.diagnostics]
+for cluster in align(diagnostics, root="/path/to/project"):
+    print(cluster.checkers_present, cluster.confidence, cluster.file)
+```
+
 ## Development
 
 ```bash

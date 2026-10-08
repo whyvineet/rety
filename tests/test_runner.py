@@ -223,3 +223,20 @@ def test_paths_starting_with_dash_are_not_passed_as_options() -> None:
     adapter = FakeAdapter("a")
     run_checkers([adapter], paths=["-weird.py", "src"], cwd="/tmp")
     assert adapter.seen_paths == ["./-weird.py", "src"]
+
+
+def test_public_api_is_importable_from_package_root() -> None:
+    import rety
+
+    for name in rety.__all__:
+        assert hasattr(rety, name), name
+
+
+def test_package_attributes_do_not_shadow_submodules() -> None:
+    import importlib
+
+    import rety
+
+    for submodule in ("align", "runner", "schema", "cli", "crosswalk"):
+        module = importlib.import_module(f"rety.{submodule}")
+        assert getattr(rety, submodule) is module, submodule
