@@ -145,6 +145,7 @@ class MypyAdapter(CheckerAdapter):
         """
         diagnostics: list[NormalizedDiagnostic] = []
         skipped_lines: list[str] = []
+        skipped_no_location: int = 0
 
         for line in raw.stdout.splitlines():
             line = line.strip()
@@ -162,16 +163,21 @@ class MypyAdapter(CheckerAdapter):
             severity_str = str(obj.get("severity", "error")).lower()
             severity = _SEVERITY_MAP.get(severity_str, Severity.error)
 
-            # Lines are 1-indexed; columns are 0-indexed and converted here.
-            start_line: int = max(_as_int(obj.get("line"), default=1), 1)
+            file_raw = str(obj.get("file") or "").strip()
+            start_line: int | None = _line_or_none(obj.get("line"))
+
+            if not file_raw or start_line is None:
+                skipped_no_location += 1
+                continue
+
+            # Columns are 0-indexed and converted here.
             start_col: int | None = _col_to_1indexed(obj.get("column"))
             end_line: int | None = _line_or_none(obj.get("end_line"))
             end_col: int | None = _col_to_1indexed(obj.get("end_column"))
 
             # mypy prints paths relative to its cwd when given relative args;
             # resolve against the invocation cwd recorded on RawInvocation.
-            file_raw = obj.get("file") or ""
-            file_path = resolve_path(str(file_raw), raw.cwd) if file_raw else ""
+            file_path = resolve_path(file_raw, raw.cwd)
 
             diagnostics.append(
                 NormalizedDiagnostic(
@@ -194,6 +200,14 @@ class MypyAdapter(CheckerAdapter):
                 f"mypy adapter: {len(skipped_lines)} line(s) that are not JSON objects skipped "
                 f"(likely the syntax-error plain-text fallback of mypy < 2.0; "
                 f"mypy bug #17660). First skipped: {skipped_lines[0]!r}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        if skipped_no_location:
+            warnings.warn(
+                f"mypy adapter: {skipped_no_location} diagnostic(s) lacked a file or line number "
+                f"and were skipped.",
                 RuntimeWarning,
                 stacklevel=2,
             )
