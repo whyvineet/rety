@@ -45,7 +45,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import itertools
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -458,7 +458,12 @@ def _score_cluster(
 
 
 def _most_common(values: list[str]) -> str | None:
-    return max(set(values), key=values.count) if values else None
+    """Most frequent value; ties go to the value seen first, so output never
+    depends on set iteration order (which varies with PYTHONHASHSEED)."""
+    if not values:
+        return None
+    counts = Counter(values)
+    return max(counts, key=lambda value: counts[value])
 
 
 def _build_cluster(

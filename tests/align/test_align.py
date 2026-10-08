@@ -488,3 +488,24 @@ def test_pairwise_signals_are_not_repeated() -> None:
 
     (c,) = clusters
     assert c.alignment_signals == ["exact range L18-18: mypy ↔ pyright"]
+
+
+def test_most_common_tie_break_does_not_depend_on_hash_seed() -> None:
+    """Set iteration order changes with PYTHONHASHSEED; the result must not."""
+    import os
+    import subprocess
+    import sys
+
+    code = "from rety.align import _most_common; print(_most_common(['Call', 'Assign']))"
+    outputs = {
+        subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": str(seed)},
+        ).stdout.strip()
+        for seed in range(6)
+    }
+
+    assert outputs == {"Call"}  # first-seen value wins a tie
