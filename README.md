@@ -23,7 +23,7 @@
 </div>
 
 > [!WARNING]
-> **Work in progress:** much of this codebase was written with AI assistance and is still under active development. You may hit bugs or unexpected behavior.
+> **Work in progress:** This project is still under active development. You may hit bugs or unexpected behavior.
 
 `rety` runs [mypy](https://mypy-lang.org/), [Pyright](https://github.com/microsoft/pyright), [Pyrefly](https://pyrefly.org/), and [ty](https://github.com/astral-sh/ty) on the same Python code, normalizes their diagnostics, and shows where they agree, where they disagree, and why.
 
