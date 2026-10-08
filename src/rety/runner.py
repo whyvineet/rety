@@ -88,11 +88,18 @@ class CheckerUnavailableError(Exception):
     Provides a concrete install hint so the user knows exactly what to do.
     """
 
-    def __init__(self, checker_name: str) -> None:
-        hint = install_hint(checker_name)
-        super().__init__(
-            f"Checker '{checker_name}' is not installed or not found on PATH.\nTo install: {hint}"
-        )
+    def __init__(self, checker_name: str, executable: str | None = None) -> None:
+        if executable is not None:
+            message = (
+                f"Checker '{checker_name}' was found at {executable}, but "
+                f"'{checker_name} --version' failed. The install may be broken."
+            )
+        else:
+            message = (
+                f"Checker '{checker_name}' is not installed or not found on PATH.\n"
+                f"To install: {install_hint(checker_name)}"
+            )
+        super().__init__(message)
         self.checker_name = checker_name
 
 
@@ -192,7 +199,9 @@ def run_checkers(
         if is_available:
             available.append(adapter)
         elif require_all:
-            raise CheckerUnavailableError(adapter.name)
+            raise CheckerUnavailableError(
+                adapter.name, adapter.executable if adapter.is_on_path() else None
+            )
         # else: skip — the CLI reports which adapters are absent from results
 
     if not available:

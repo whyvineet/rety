@@ -134,3 +134,24 @@ def test_kill_running_checkers_stops_a_running_subprocess() -> None:
     assert not thread.is_alive()
     assert time.monotonic() - start < 20
     assert not errors
+
+
+@pytest.mark.parametrize(
+    ("output", "name", "expected"),
+    [
+        ("mypy 2.3.1 (compiled: yes)", "mypy", "2.3.1"),
+        ("pyright 1.1.414", "pyright", "1.1.414"),
+        ("ty 0.0.83 (9c214798c 2026-09-21)", "ty", "0.0.83"),
+        # The PyPI pyright wrapper prints download progress on first run.
+        (
+            "* Install prerequisites\n* Installing pyright@1.1.414\npyright 1.1.414",
+            "pyright",
+            "1.1.414",
+        ),
+        ("pyrefly 1.3.1-dev", "pyrefly", "1.3.1-dev"),
+    ],
+)
+def test_parse_version_output(output: str, name: str, expected: str) -> None:
+    from rety.adapters.base import parse_version_output
+
+    assert parse_version_output(output, name) == expected

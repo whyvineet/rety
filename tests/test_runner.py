@@ -29,8 +29,10 @@ class FakeAdapter(CheckerAdapter):
         returncode: int = 1,
         stdout: str | None = None,
         stderr: str = "",
+        on_path: bool | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
+        self._on_path = available if on_path is None else on_path
         self._returncode = returncode
         self._stdout = stdout
         self._stderr = stderr
@@ -51,6 +53,9 @@ class FakeAdapter(CheckerAdapter):
     @property
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities()
+
+    def is_on_path(self) -> bool:
+        return self._on_path
 
     def detect_version(self) -> str | None:
         self.version_calls += 1
@@ -206,3 +211,9 @@ def test_parse_exception_is_captured_with_the_real_invocation() -> None:
     (r,) = run_checkers([Exploding("x")], paths=["src"], cwd="/tmp")
     assert isinstance(r.error, ValueError)
     assert r.invocation.stdout == "x-out"
+
+
+def test_require_all_says_when_checker_is_installed_but_broken() -> None:
+    broken = FakeAdapter("pyright", available=False, on_path=True)
+    with pytest.raises(CheckerUnavailableError, match="'pyright --version' failed"):
+        run_checkers([broken], paths=["src"], cwd="/tmp", require_all=True)

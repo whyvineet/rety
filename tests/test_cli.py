@@ -45,6 +45,23 @@ def test_skipped_checkers_are_reported_on_stderr(
     assert "--require-all" in result.stderr
 
 
+def test_broken_checker_is_reported_as_broken_not_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ok = FakeAdapter("mypy")
+    broken = FakeAdapter("pyright", available=False, on_path=True)
+    monkeypatch.setattr(
+        cli, "ALL_ADAPTERS", {"mypy": lambda **_kw: ok, "pyright": lambda **_kw: broken}
+    )
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(cli.main, ["check", "--checker", "mypy,pyright", str(target)])
+
+    assert "'--version' failed" in result.stderr
+    assert "pip install pyright" not in result.stderr
+
+
 def test_nothing_skipped_prints_no_notice(
     fake_registry: dict[str, FakeAdapter], tmp_path: Path
 ) -> None:

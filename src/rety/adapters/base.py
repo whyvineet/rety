@@ -58,6 +58,23 @@ def resolve_path(file_raw: str, cwd: str | None) -> str:
     return str(path.resolve())
 
 
+def parse_version_output(text: str, name: str) -> str | None:
+    """
+    Extract a version from `<checker> --version` output.
+
+    Looks for "<name> X.Y[.Z...]" anywhere in the text rather than taking the
+    second word of the first line: the PyPI pyright wrapper prints download
+    progress before the version on its first run.
+    """
+    match = re.search(rf"\b{re.escape(name)}\s+v?(\d+(?:\.\d+)+\S*)", text)
+    if match:
+        return match.group(1)
+    parts = text.strip().split()
+    if len(parts) >= 2:
+        return parts[1]
+    return text.strip() or None
+
+
 @dataclass(frozen=True)
 class AdapterCapabilities:
     """
@@ -215,6 +232,14 @@ class CheckerAdapter(ABC):
     def is_available(self) -> bool:
         """Return True if this checker is installed and detectable."""
         return self.version() is not None
+
+    def is_on_path(self) -> bool:
+        """
+        True if the executable exists on PATH, whether or not it works.
+        Lets callers tell "not installed" from "installed but its version
+        probe failed" (a broken install, a missing node runtime, ...).
+        """
+        return shutil.which(self.name) is not None
 
     def _run_subprocess(
         self,

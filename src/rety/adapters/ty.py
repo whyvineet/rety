@@ -51,7 +51,12 @@ import subprocess
 import time
 import warnings
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
+from rety.adapters.base import (
+    AdapterCapabilities,
+    CheckerAdapter,
+    parse_version_output,
+    resolve_path,
+)
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # ---------------------------------------------------------------------------
@@ -146,10 +151,7 @@ class TyAdapter(CheckerAdapter):
             )
             if result.returncode == 0:
                 # "ty 0.0.83 (9c214798c 2026-09-21)"
-                parts = result.stdout.strip().split()
-                if len(parts) >= 2:
-                    return parts[1]
-                return result.stdout.strip() or None
+                return parse_version_output(result.stdout, "ty")
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 

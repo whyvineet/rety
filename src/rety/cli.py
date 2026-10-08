@@ -209,15 +209,19 @@ def check(
 
     # Tell the user which selected checkers were not found, and how to get them.
     ran = {result.checker_name for result in results}
-    skipped = [name for name in checker_names if name not in ran]
+    skipped = [adapter for adapter in adapters if adapter.name not in ran]
     if skipped:
         click.echo(
-            f"Skipped {len(skipped)} checker(s) not installed or not on PATH: "
-            + ", ".join(skipped),
+            f"Skipped {len(skipped)} checker(s) not installed or not working: "
+            + ", ".join(adapter.name for adapter in skipped),
             err=True,
         )
-        for name in skipped:
-            click.echo(f"  {name:<8} {install_hint(name)}", err=True)
+        for adapter in skipped:
+            if adapter.is_on_path():
+                reason = f"found at {adapter.executable} but '--version' failed"
+            else:
+                reason = install_hint(adapter.name)
+            click.echo(f"  {adapter.name:<8} {reason}", err=True)
         click.echo("Use --require-all to fail instead of skipping.", err=True)
 
     if not results:

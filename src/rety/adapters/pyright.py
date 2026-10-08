@@ -52,7 +52,12 @@ import time
 import warnings
 from typing import Any
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
+from rety.adapters.base import (
+    AdapterCapabilities,
+    CheckerAdapter,
+    parse_version_output,
+    resolve_path,
+)
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # Pyright severity strings → Severity enum
@@ -94,9 +99,7 @@ class PyrightAdapter(CheckerAdapter):
                 timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
-                parts = result.stdout.strip().split()
-                if len(parts) >= 2:
-                    return parts[1]
+                return parse_version_output(result.stdout, "pyright")
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
         return None
