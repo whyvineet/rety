@@ -527,3 +527,21 @@ def test_file_with_latin1_coding_cookie_is_enriched(tmp_path: Path) -> None:
     (c,) = align([diag("mypy", 3, file=str(target), col=5)])
 
     assert c.enclosing_node_type == "Call"
+
+
+def test_columns_after_non_ascii_text_find_the_right_statement(tmp_path: Path) -> None:
+    """ast gives UTF-8 byte offsets; checkers give character columns."""
+    source = "a = 'ééééé'; b = int(1)\n"
+    target = tmp_path / "u.py"
+    target.write_text(source, encoding="utf-8")
+    int_col = source.index("int(") + 1  # 1-indexed character column
+
+    from rety.align import _get_index, _lookup
+
+    index = _get_index(str(target))
+    assert index is not None
+    node_type, _scope, anchors = _lookup(index, 1, int_col)
+
+    assert node_type == "Call"
+    # Only `b = int(1)` and its Call contain the position, not `a = 'ééééé'`.
+    assert {(a.node_type, a.start_col) for a in anchors} == {("Assign", 13), ("Call", 17)}

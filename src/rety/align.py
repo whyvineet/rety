@@ -95,8 +95,10 @@ _AST_MERGE_PROXIMITY = 3
 
 @dataclass(frozen=True)
 class _Span:
-    """Source span of one AST node. Lines are 1-indexed; columns follow the
-    ast module convention (0-indexed start, exclusive 0-indexed end)."""
+    """Source span of one AST node. Lines are 1-indexed; columns are
+    0-indexed *character* offsets (exclusive end). The ast module reports
+    UTF-8 byte offsets; _build_index converts them so they compare correctly
+    with the character columns checkers report."""
 
     node_type: str
     start_line: int
@@ -148,7 +150,23 @@ class _Enriched:
 _index_cache: dict[str, _FileIndex | None] = {}
 
 
-def _build_index(tree: ast.Module) -> _FileIndex:
+def _split_source_lines(source: str) -> list[str]:
+    """Split on the same line endings the tokenizer uses (not str.splitlines,
+    which also breaks on form feeds and U+2028 and would shift line numbers)."""
+    return source.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+
+def _char_col(lines: list[str], lineno: int, byte_col: int) -> int:
+    """Convert an ast UTF-8 byte offset on a 1-indexed line to a character offset."""
+    if not 1 <= lineno <= len(lines):
+        return byte_col
+    line = lines[lineno - 1]
+    if line.isascii():
+        return byte_col
+    return len(line.encode("utf-8")[:byte_col].decode("utf-8", errors="ignore"))
+
+
+def _build_index(tree: ast.Module, lines: list[str]) -> _FileIndex:
     """Index every statement and Call node by the lines it covers."""
     nodes_by_line: dict[int, list[_Span]] = defaultdict(list)
     scopes_by_line: dict[int, list[tuple[int, str]]] = defaultdict(list)
@@ -168,13 +186,14 @@ def _build_index(tree: ast.Module) -> _FileIndex:
                 continue
 
             if isinstance(child, (ast.stmt, ast.Call)):
+                start_col = _char_col(lines, start, child.col_offset)
                 end_col = child.end_col_offset
                 span = _Span(
                     node_type=type(child).__name__,
                     start_line=start,
-                    start_col=child.col_offset,
+                    start_col=start_col,
                     end_line=end,
-                    end_col=end_col if end_col is not None else child.col_offset,
+                    end_col=_char_col(lines, end, end_col) if end_col is not None else start_col,
                     depth=child_depth,
                 )
                 for line in range(start, end + 1):
@@ -204,8 +223,8 @@ def _get_index(file_path: str) -> _FileIndex | None:
 
     index: _FileIndex | None
     try:
-        tree = ast.parse(_decode_source(content))
-        index = _build_index(tree)
+        source = _decode_source(content)
+        index = _build_index(ast.parse(source), _split_source_lines(source))
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         index = None
 
