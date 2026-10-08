@@ -152,7 +152,16 @@ class PyreflyAdapter(CheckerAdapter):
             )
             return []
 
-        items = self._extract_items(doc)
+        items: list[Any] | None = self._extract_items(doc)
+        if items is None:
+            warnings.warn(
+                "pyrefly adapter: JSON output lacks an 'errors' or 'diagnostics' list. "
+                "This may indicate a Pyrefly version change; compare against "
+                "tests/fixtures/captured/pyrefly/.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            items = []
 
         diagnostics: list[NormalizedDiagnostic] = []
         skipped = 0
@@ -175,16 +184,16 @@ class PyreflyAdapter(CheckerAdapter):
         return diagnostics
 
     @staticmethod
-    def _extract_items(doc: Any) -> list[Any]:
+    def _extract_items(doc: Any) -> list[Any] | None:
         """Return the list of diagnostic entries from a decoded JSON document."""
         if isinstance(doc, list):
             return doc
         if isinstance(doc, dict):
             for key in ("errors", "diagnostics"):
-                value = doc.get(key)
-                if isinstance(value, list):
-                    return value
-        return []
+                if key in doc:
+                    value = doc[key]
+                    return value if isinstance(value, list) else None
+        return None
 
     def _parse_single(
         self,
