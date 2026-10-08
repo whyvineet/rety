@@ -8,9 +8,15 @@ embedded so consumers can detect and reject version mismatches.
 Output structure:
     {
         "schema_version": 1,
+        "rety_version": "0.1.0",
+        "cwd": "/abs/project",
+        "paths": ["src/"],
+        "line_tolerance": 0,
         "checkers_run": ["mypy", "pyright", ...],
         "checker_errors": {"ty": "ty exited with code 2: ..."},
         "checker_versions": {"mypy": "1.x.x", ...},
+        "checker_returncodes": {"mypy": 1, ...},
+        "checker_durations_ms": {"mypy": 4210.5, ...},
         "total_diagnostics": {"mypy": 12, ...},
         "clusters": [
             {

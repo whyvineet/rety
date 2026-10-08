@@ -88,6 +88,28 @@ def test_json_output_lists_only_checkers_that_ran(
     assert report["total_diagnostics"] == {"mypy": 1, "pyright": 1}
 
 
+def test_json_report_records_how_it_was_produced(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
+    from rety import __version__
+
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main,
+        ["check", "--format", "json", "-t", "2", "--checker", "mypy,pyright", str(target)],
+    )
+
+    report = json.loads(result.stdout)
+    assert report["rety_version"] == __version__
+    assert report["paths"] == [str(target)]
+    assert report["cwd"]
+    assert report["line_tolerance"] == 2
+    assert report["checker_returncodes"] == {"mypy": 1, "pyright": 1}
+    assert report["checker_durations_ms"] == {"mypy": 1.0, "pyright": 1.0}
+
+
 def test_unknown_checker_name_is_rejected(
     fake_registry: dict[str, FakeAdapter], tmp_path: Path
 ) -> None:

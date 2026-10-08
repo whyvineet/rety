@@ -53,9 +53,15 @@ def test_render_produces_documented_top_level_shape() -> None:
 
     assert list(doc) == [
         "schema_version",
+        "rety_version",
+        "cwd",
+        "paths",
+        "line_tolerance",
         "checkers_run",
         "checker_errors",
         "checker_versions",
+        "checker_returncodes",
+        "checker_durations_ms",
         "total_diagnostics",
         "clusters",
     ]

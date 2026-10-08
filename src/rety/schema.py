@@ -308,6 +308,20 @@ class ComparisonReport(BaseModel):
 
     schema_version: int = Field(default=SCHEMA_VERSION)
 
+    # ---- How this report was produced (for reproducing or auditing it) ----
+    rety_version: str | None = None
+    """Version of rety that produced the report."""
+
+    cwd: str | None = None
+    """Directory the checkers ran in; their config files were found relative to it."""
+
+    paths: list[str] = Field(default_factory=list)
+    """Paths passed to the checkers, exactly as given on the command line."""
+
+    line_tolerance: int = 0
+    """The --line-tolerance used for clustering."""
+
+    # ---- Per-checker results ----
     checkers_run: list[str]
     """
     Names of the checkers that ran to completion (not all four, if fewer were
@@ -320,6 +334,12 @@ class ComparisonReport(BaseModel):
 
     checker_versions: dict[str, str | None]
     """Detected version per checker. Value is None if version detection failed."""
+
+    checker_returncodes: dict[str, int] = Field(default_factory=dict)
+    """Exit code per checker that ran. Non-zero is normal when it found issues."""
+
+    checker_durations_ms: dict[str, float] = Field(default_factory=dict)
+    """Wall-clock run time per checker that ran, in milliseconds."""
 
     total_diagnostics: dict[str, int]
     """Raw diagnostic count per checker, before clustering."""

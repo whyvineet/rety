@@ -243,6 +243,8 @@ def check(
     # Aggregate results
     checkers_run: list[str] = []
     checker_versions: dict[str, str | None] = {}
+    checker_returncodes: dict[str, int] = {}
+    checker_durations_ms: dict[str, float] = {}
     total_diagnostics: dict[str, int] = {}
     all_diagnostics = []
 
@@ -252,6 +254,8 @@ def check(
         name = result.checker_name
         checkers_run.append(name)
         checker_versions[name] = result.invocation.version
+        checker_returncodes[name] = result.invocation.returncode
+        checker_durations_ms[name] = round(result.invocation.duration_ms, 1)
         total_diagnostics[name] = len(result.diagnostics)
         all_diagnostics.extend(result.diagnostics)
 
@@ -260,9 +264,15 @@ def check(
 
     # Build the comparison report
     report = ComparisonReport(
+        rety_version=__version__,
+        cwd=invocation_cwd,
+        paths=list(paths),
+        line_tolerance=line_tolerance,
         checkers_run=checkers_run,
         checker_errors=checker_errors,
         checker_versions=checker_versions,
+        checker_returncodes=checker_returncodes,
+        checker_durations_ms=checker_durations_ms,
         total_diagnostics=total_diagnostics,
         clusters=clusters,
     )
