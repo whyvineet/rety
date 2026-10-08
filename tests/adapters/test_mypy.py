@@ -205,12 +205,14 @@ def test_parse_all_non_json_produces_empty_with_warning(recwarn: pytest.Warnings
 def test_parse_skips_locationless_diagnostics(recwarn: pytest.WarningsChecker) -> None:
     """Diagnostics missing a file or line number are skipped with a warning."""
     # file present but no line, and no file but line present
-    output = "\n".join([
-        _line(file="ok.py", line=None, message="no line"),
-        _line(file="", line=1, message="no file"),
-        _line(file=None, line=1, message="null file"),
-        _line(file="ok.py", line=1, message="good")
-    ])
+    output = "\n".join(
+        [
+            _line(file="ok.py", line=None, message="no line"),
+            _line(file="", line=1, message="no file"),
+            _line(file=None, line=1, message="null file"),
+            _line(file="ok.py", line=1, message="good"),
+        ]
+    )
     with pytest.warns(RuntimeWarning, match="lacked a file or line number"):
         diagnostics = ADAPTER.parse(_make_raw(output))
     assert len(diagnostics) == 1
