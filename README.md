@@ -59,7 +59,26 @@ rety check --fail-on error src/          # exit 1 on errors (for CI)
 rety check --python .venv/bin/python src/  # make every checker use your project's environment
 ```
 
-Exit codes: `0` done, `1` `--fail-on` threshold met, `2` usage error or no checker available, `3` a checker crashed, timed out or rejected its config (the report is incomplete).
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0`  | Run completed and the `--fail-on` threshold was not met |
+| `1`  | The `--fail-on` threshold was met |
+| `2`  | Usage error, no checker available, or `--require-all` not satisfied |
+| `3`  | A checker crashed, timed out, or rejected its config (the report is incomplete) |
+
+By default (`--fail-on none`) rety exits `0` whenever the run itself succeeded, regardless of what the checkers found.
+
+### Confidence scores
+
+Confidence reflects cross-checker evidence only:
+
+| Badge    | Meaning |
+|----------|---------|
+| `* HIGH` | Two different checkers report exactly the same line range |
+| `~ MED`  | Two different checkers report overlapping line ranges, or share an enclosing statement/`--line-tolerance` *and* belong to the same code family |
+| `- LOW`  | Joined only through a shared enclosing statement or `--line-tolerance` (different code families), or a single checker reported here |
 
 ## Use as a library
 
