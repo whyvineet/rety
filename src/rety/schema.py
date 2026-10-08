@@ -332,6 +332,13 @@ class ComparisonReport(BaseModel):
     checker_errors: dict[str, str] = Field(default_factory=dict)
     """Checkers that were invoked but failed, mapped to the failure message."""
 
+    checker_warnings: dict[str, list[str]] = Field(default_factory=dict)
+    """
+    Parser warnings per checker (only checkers that had any), e.g. output
+    lines the adapter did not recognise. Usually means the checker's output
+    format changed and that checker's results may be incomplete.
+    """
+
     checker_versions: dict[str, str | None]
     """Detected version per checker. Value is None if version detection failed."""
 

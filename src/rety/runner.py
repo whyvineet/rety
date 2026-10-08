@@ -34,6 +34,7 @@ Concurrency model:
 from __future__ import annotations
 
 import os
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -114,12 +115,17 @@ class CheckerResult:
                       exited outside adapter.ok_returncodes without producing
                       any diagnostics (CheckerFailedError). A non-zero code with
                       diagnostics is normal and is not an error.
+        warnings:     Warnings the adapter's parser emitted, e.g. output lines
+                      it did not recognise. Non-empty usually means the
+                      checker's output format changed and results may be
+                      incomplete.
     """
 
     adapter: CheckerAdapter
     invocation: RawInvocation
     diagnostics: list[NormalizedDiagnostic]
     error: Exception | None = field(default=None)
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def checker_name(self) -> str:
@@ -192,16 +198,17 @@ def run_checkers(
     if not available:
         return []
 
+    # Only the subprocesses run in worker threads. Parsing is cheap and runs
+    # here, on the calling thread, because capturing an adapter's parse
+    # warnings with warnings.catch_warnings() is not thread-safe.
     with ThreadPoolExecutor(
         max_workers=len(available),
         thread_name_prefix="rety-checker",
     ) as executor:
-        futures = [
-            executor.submit(_run_one, adapter, paths, effective_cwd) for adapter in available
-        ]
+        futures = [executor.submit(_invoke, adapter, paths, effective_cwd) for adapter in available]
         try:
             # Collect in submission order, not completion order.
-            return [future.result() for future in futures]
+            invocations = [future.result() for future in futures]
         except KeyboardInterrupt:
             # Leaving the `with` block waits for every worker; kill the
             # checkers first so Ctrl+C returns promptly instead of after the
@@ -209,41 +216,68 @@ def run_checkers(
             kill_running_checkers()
             raise
 
+    return [_parse(adapter, outcome) for adapter, outcome in zip(available, invocations)]
 
-def _run_one(
-    adapter: CheckerAdapter,
-    paths: list[str],
-    cwd: str,
-) -> CheckerResult:
+
+def _invoke(adapter: CheckerAdapter, paths: list[str], cwd: str) -> RawInvocation | Exception:
     """
-    Run a single adapter synchronously (called from a worker thread).
+    Run one checker subprocess (called from a worker thread).
 
-    Catches all exceptions from run() and parse() and returns them as
-    CheckerResult.error rather than propagating, so one failing adapter
-    doesn't abort the others.
+    Returns the exception instead of raising, so one failing adapter doesn't
+    abort the others.
     """
     try:
-        invocation = adapter.run(paths, cwd)
-        diagnostics = adapter.parse(invocation)
-        if invocation.returncode not in adapter.ok_returncodes and not diagnostics:
-            return CheckerResult(
-                adapter=adapter,
-                invocation=invocation,
-                diagnostics=[],
-                error=CheckerFailedError(
-                    adapter.name,
-                    invocation.returncode,
-                    invocation.stderr or invocation.stdout,
-                ),
-            )
+        return adapter.run(paths, cwd)
+    except Exception as exc:
+        return exc
+
+
+def _parse(adapter: CheckerAdapter, outcome: RawInvocation | Exception) -> CheckerResult:
+    """
+    Parse one checker's output into a CheckerResult, recording any warnings
+    the parser emits (e.g. unrecognised output lines) on the result.
+    """
+    if isinstance(outcome, Exception):
+        return _failed(adapter, outcome)
+
+    invocation = outcome
+    try:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            diagnostics = adapter.parse(invocation)
+    except Exception as exc:
+        return _failed(adapter, exc, invocation)
+    parse_warnings = [str(w.message) for w in caught]
+
+    if invocation.returncode not in adapter.ok_returncodes and not diagnostics:
         return CheckerResult(
             adapter=adapter,
             invocation=invocation,
-            diagnostics=diagnostics,
+            diagnostics=[],
+            error=CheckerFailedError(
+                adapter.name,
+                invocation.returncode,
+                invocation.stderr or invocation.stdout,
+            ),
+            warnings=parse_warnings,
         )
-    except Exception as exc:
+    return CheckerResult(
+        adapter=adapter,
+        invocation=invocation,
+        diagnostics=diagnostics,
+        warnings=parse_warnings,
+    )
+
+
+def _failed(
+    adapter: CheckerAdapter,
+    exc: Exception,
+    invocation: RawInvocation | None = None,
+) -> CheckerResult:
+    """A CheckerResult for an adapter whose run() or parse() raised."""
+    if invocation is None:
         # Construct a minimal RawInvocation to satisfy the dataclass contract
-        dummy = RawInvocation(
+        invocation = RawInvocation(
             checker=adapter.name,
             returncode=-1,
             stdout="",
@@ -251,9 +285,4 @@ def _run_one(
             duration_ms=0.0,
             version=None,
         )
-        return CheckerResult(
-            adapter=adapter,
-            invocation=dummy,
-            diagnostics=[],
-            error=exc,
-        )
+    return CheckerResult(adapter=adapter, invocation=invocation, diagnostics=[], error=exc)

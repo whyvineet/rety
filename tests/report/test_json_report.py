@@ -59,6 +59,7 @@ def test_render_produces_documented_top_level_shape() -> None:
         "line_tolerance",
         "checkers_run",
         "checker_errors",
+        "checker_warnings",
         "checker_versions",
         "checker_returncodes",
         "checker_durations_ms",

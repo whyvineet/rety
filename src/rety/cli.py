@@ -232,7 +232,12 @@ def check(
     # A failed checker (crash, timeout, config error) is not "a checker that
     # found nothing": keep it out of checkers_run so it never counts toward M.
     checker_errors: dict[str, str] = {}
+    checker_warnings: dict[str, list[str]] = {}
     for result in results:
+        if result.warnings:
+            checker_warnings[result.checker_name] = result.warnings
+            for message in result.warnings:
+                click.echo(f"Warning: {message}", err=True)
         if result.error is not None:
             checker_errors[result.checker_name] = _describe_error(result.error)
             click.echo(
@@ -270,6 +275,7 @@ def check(
         line_tolerance=line_tolerance,
         checkers_run=checkers_run,
         checker_errors=checker_errors,
+        checker_warnings=checker_warnings,
         checker_versions=checker_versions,
         checker_returncodes=checker_returncodes,
         checker_durations_ms=checker_durations_ms,

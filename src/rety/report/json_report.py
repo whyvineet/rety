@@ -14,6 +14,7 @@ Output structure:
         "line_tolerance": 0,
         "checkers_run": ["mypy", "pyright", ...],
         "checker_errors": {"ty": "ty exited with code 2: ..."},
+        "checker_warnings": {"pyrefly": ["pyrefly adapter: 2 entries ..."]},
         "checker_versions": {"mypy": "1.x.x", ...},
         "checker_returncodes": {"mypy": 1, ...},
         "checker_durations_ms": {"mypy": 4210.5, ...},

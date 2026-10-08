@@ -232,3 +232,22 @@ def test_fail_on_error_ignores_warnings_but_any_does_not(
 
     assert _invoke_fail_on("error", target) == 0
     assert _invoke_fail_on("any", target) == 1
+
+
+def test_parse_warnings_go_to_stderr_and_report(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from tests.test_runner import WarningAdapter
+
+    adapter = WarningAdapter("ty")
+    monkeypatch.setattr(cli, "ALL_ADAPTERS", {"ty": lambda **_kw: adapter})
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(cli.main, ["check", "-f", "json", "-c", "ty", str(target)])
+
+    assert result.exit_code == 0
+    assert "Warning: ty adapter: 1 line(s) did not match" in result.stderr
+    assert json.loads(result.stdout)["checker_warnings"] == {
+        "ty": ["ty adapter: 1 line(s) did not match"]
+    }

@@ -180,3 +180,29 @@ def test_timeout_is_reported_as_error_not_crash() -> None:
     assert not r.succeeded
     assert "timed out" in str(r.error)
     assert r.diagnostics == []
+
+
+class WarningAdapter(FakeAdapter):
+    def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+        import warnings
+
+        warnings.warn("ty adapter: 1 line(s) did not match", RuntimeWarning, stacklevel=2)
+        return super().parse(raw)
+
+
+def test_parse_warnings_are_recorded_on_the_result_every_time() -> None:
+    """Python shows a warning once per location by default; rety must not lose repeats."""
+    for _ in range(2):
+        (r,) = run_checkers([WarningAdapter("ty")], paths=["src"], cwd="/tmp")
+        assert r.succeeded
+        assert r.warnings == ["ty adapter: 1 line(s) did not match"]
+
+
+def test_parse_exception_is_captured_with_the_real_invocation() -> None:
+    class Exploding(FakeAdapter):
+        def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+            raise ValueError("bad output")
+
+    (r,) = run_checkers([Exploding("x")], paths=["src"], cwd="/tmp")
+    assert isinstance(r.error, ValueError)
+    assert r.invocation.stdout == "x-out"
