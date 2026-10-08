@@ -252,8 +252,10 @@ class DiagnosticCluster(BaseModel):
 
     cluster_id: str
     """
-    Deterministic 12-character hex ID derived from file + representative range.
-    Stable across rety invocations on the same code.
+    Deterministic 12-character hex ID derived from the file path (relative to
+    the project directory when the file is inside it) + representative range.
+    Stable across rety invocations, machines and checkouts of the same code.
+    It changes when the cluster's lines move.
     """
 
     file: str
@@ -363,6 +365,8 @@ class ComparisonReport(BaseModel):
 def make_cluster_id(file: str, start_line: int, end_line: int) -> str:
     """
     Generate a stable, short cluster ID from file + representative range.
+    Pass a project-relative, "/"-separated path for IDs that are portable
+    across machines (align() does this when given a root).
     12 hex chars (48 bits) — collision-resistant for any realistic diagnostic count.
     """
     payload = f"{file}:{start_line}:{end_line}".encode()

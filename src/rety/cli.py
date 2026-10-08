@@ -265,7 +265,7 @@ def check(
         all_diagnostics.extend(result.diagnostics)
 
     # Align diagnostics into clusters
-    clusters = align(all_diagnostics, line_tolerance=line_tolerance)
+    clusters = align(all_diagnostics, line_tolerance=line_tolerance, root=invocation_cwd)
 
     # Build the comparison report
     report = ComparisonReport(

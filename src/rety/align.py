@@ -49,7 +49,7 @@ import itertools
 import tokenize
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from rety.schema import (
     Confidence,
@@ -570,10 +570,26 @@ def _most_common(values: list[str]) -> str | None:
     return max(counts, key=lambda value: counts[value])
 
 
+def _id_path(file_path: str, root: str | None) -> str:
+    """
+    The path used in cluster_id: relative to root with "/" separators when
+    the file is under root, so the same code checked out in different
+    directories (or on different OSes) gets the same IDs. Otherwise the
+    path as given.
+    """
+    if root:
+        try:
+            return PurePath(file_path).relative_to(root).as_posix()
+        except ValueError:
+            pass
+    return file_path
+
+
 def _build_cluster(
     members: list[_Enriched],
     file_path: str,
     tolerance: int,
+    root: str | None = None,
 ) -> DiagnosticCluster:
     """Construct a DiagnosticCluster from a list of enriched members."""
     diags = [e.diag for e in members]
@@ -583,7 +599,7 @@ def _build_cluster(
     confidence, signals = _score_cluster(members, tolerance)
 
     return DiagnosticCluster(
-        cluster_id=make_cluster_id(file_path, start_line, end_line),
+        cluster_id=make_cluster_id(_id_path(file_path, root), start_line, end_line),
         file=file_path,
         representative_range=(start_line, end_line),
         enclosing_node_type=_most_common(
@@ -605,6 +621,7 @@ def _build_cluster(
 def align(
     diagnostics: list[NormalizedDiagnostic],
     line_tolerance: int = 0,
+    root: str | None = None,
 ) -> list[DiagnosticCluster]:
     """
     Align diagnostics from multiple checkers into clusters.
@@ -618,6 +635,10 @@ def align(
         line_tolerance: How many lines apart two diagnostics can be and still
                         be considered range-overlapping. Default 0 (overlap or
                         touching only).
+        root:           Project directory (rety passes the invocation cwd).
+                        Cluster IDs hash file paths relative to it, so they
+                        match across machines and checkouts. None hashes the
+                        absolute path.
 
     Returns:
         List of DiagnosticCluster, sorted by file path then representative
@@ -625,6 +646,11 @@ def align(
     """
     if not diagnostics:
         return []
+
+    # Diagnostic paths are resolved (symlinks, drive case); resolve root the
+    # same way so relative_to() matches.
+    if root:
+        root = str(Path(root).resolve())
 
     # Stage 1: group by file
     by_file: dict[str, list[NormalizedDiagnostic]] = defaultdict(list)
@@ -646,7 +672,7 @@ def align(
         # Stage 5: build DiagnosticCluster objects with confidence scores
         for members in merged_clusters:
             if members:
-                all_clusters.append(_build_cluster(members, file_path, line_tolerance))
+                all_clusters.append(_build_cluster(members, file_path, line_tolerance, root))
 
     all_clusters.sort(key=lambda c: (c.file, c.representative_range[0]))
     return all_clusters

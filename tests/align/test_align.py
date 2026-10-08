@@ -630,3 +630,21 @@ def test_ty_without_end_line_can_be_high_against_multiline_range() -> None:
 def test_ty_on_a_later_line_of_multiline_range_is_still_medium() -> None:
     (c,) = align([diag("pyright", 20, 22), diag("ty", 21)])
     assert c.confidence == Confidence.MEDIUM
+
+
+def test_cluster_id_does_not_depend_on_checkout_location(tmp_path: Path) -> None:
+    """Same project in two directories (two CI runners, say) → same IDs."""
+    ids = []
+    for checkout in ("a", "b"):
+        root = tmp_path / checkout
+        target = str((root / "pkg" / "mod.py").resolve())
+        (c,) = align([diag("mypy", 7, file=target), diag("ty", 7, file=target)], root=str(root))
+        ids.append(c.cluster_id)
+
+    assert ids[0] == ids[1]
+
+
+def test_cluster_id_for_file_outside_root_uses_full_path(tmp_path: Path) -> None:
+    (inside,) = align([diag("mypy", 7, file=FAKE_FILE)], root=str(tmp_path))
+    (plain,) = align([diag("mypy", 7, file=FAKE_FILE)])
+    assert inside.cluster_id == plain.cluster_id
