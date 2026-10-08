@@ -140,7 +140,9 @@ def _ensure_utf8_streams() -> None:
 @click.option(
     "--python",
     "python",
-    type=click.Path(exists=True),
+    # Absolute: mypy rejects a relative --python-executable, and every
+    # checker would otherwise resolve it its own way.
+    type=click.Path(exists=True, resolve_path=True),
     default=None,
     metavar="PATH",
     help=(

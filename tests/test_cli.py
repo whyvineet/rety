@@ -268,3 +268,20 @@ def test_parse_warnings_go_to_stderr_and_report(
     assert json.loads(result.stdout)["checker_warnings"] == {
         "ty": ["ty adapter: 1 line(s) did not match"]
     }
+
+
+def test_python_option_is_made_absolute(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    seen: dict[str, object] = {}
+
+    def make(**kwargs: object) -> FakeAdapter:
+        seen.update(kwargs)
+        return FakeAdapter("mypy")
+
+    monkeypatch.setattr(cli, "ALL_ADAPTERS", {"mypy": make})
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "python.exe").write_text("")
+    (tmp_path / "x.py").write_text("x = 1\n")
+
+    CliRunner().invoke(cli.main, ["check", "-c", "mypy", "--python", "python.exe", "x.py"])
+
+    assert seen["python"] == str((tmp_path / "python.exe").resolve())
