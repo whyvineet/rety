@@ -445,14 +445,19 @@ def _shared_anchor(e1: _Enriched, e2: _Enriched) -> _Span | None:
 def _should_merge_by_ast(c1: list[_Enriched], c2: list[_Enriched]) -> bool:
     """
     True if some member of c1 and some member of c2 lie inside the same
-    multi-line anchor node instance, and the clusters are close together.
+    multi-line anchor node instance, they come from different checkers, and
+    the clusters are close together.
     """
     max_line1 = max(_effective_range(e.diag)[1] for e in c1)
     min_line2 = min(e.diag.start_line for e in c2)
     if min_line2 - max_line1 > _AST_MERGE_PROXIMITY:
         return False
 
-    return any(_shared_anchor(e1, e2) is not None for e1 in c1 for e2 in c2)
+    return any(
+        e1.diag.checker != e2.diag.checker and _shared_anchor(e1, e2) is not None
+        for e1 in c1
+        for e2 in c2
+    )
 
 
 def _merge_clusters_by_ast(clusters: list[list[_Enriched]]) -> list[list[_Enriched]]:
