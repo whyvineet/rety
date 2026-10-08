@@ -1,0 +1,3 @@
+tests\fixtures\forward_references.py:29:12: error[unresolved-attribute] Attribute `value` is not defined on `None` in union `Node | None`
+tests\fixtures\forward_references.py:35:12: error[unresolved-attribute] Attribute `value` is not defined on `None` in union `Node | None`
+Found 2 diagnostics

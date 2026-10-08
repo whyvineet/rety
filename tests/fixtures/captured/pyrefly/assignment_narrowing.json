@@ -1,0 +1,88 @@
+{
+  "errors": [
+    {
+      "line": 20,
+      "column": 5,
+      "stop_line": 20,
+      "stop_column": 16,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "unimported-directive",
+      "description": "`reveal_type` must be imported from `typing` for runtime usage",
+      "concise_description": "`reveal_type` must be imported from `typing` for runtime usage",
+      "severity": "error"
+    },
+    {
+      "line": 20,
+      "column": 16,
+      "stop_line": 20,
+      "stop_column": 19,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "reveal-type",
+      "description": "revealed type: Literal[42]",
+      "concise_description": "revealed type: Literal[42]",
+      "severity": "info"
+    },
+    {
+      "line": 30,
+      "column": 5,
+      "stop_line": 30,
+      "stop_column": 16,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "unimported-directive",
+      "description": "`reveal_type` must be imported from `typing` for runtime usage",
+      "concise_description": "`reveal_type` must be imported from `typing` for runtime usage",
+      "severity": "error"
+    },
+    {
+      "line": 30,
+      "column": 16,
+      "stop_line": 30,
+      "stop_column": 19,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "reveal-type",
+      "description": "revealed type: int | str",
+      "concise_description": "revealed type: int | str",
+      "severity": "info"
+    },
+    {
+      "line": 39,
+      "column": 5,
+      "stop_line": 39,
+      "stop_column": 16,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "unimported-directive",
+      "description": "`reveal_type` must be imported from `typing` for runtime usage",
+      "concise_description": "`reveal_type` must be imported from `typing` for runtime usage",
+      "severity": "error"
+    },
+    {
+      "line": 39,
+      "column": 16,
+      "stop_line": 39,
+      "stop_column": 22,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "reveal-type",
+      "description": "revealed type: int | str",
+      "concise_description": "revealed type: int | str",
+      "severity": "info"
+    },
+    {
+      "line": 42,
+      "column": 14,
+      "stop_line": 42,
+      "stop_column": 20,
+      "path": "tests/fixtures/assignment_narrowing.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`int | str` is not assignable to `int`",
+      "concise_description": "`int | str` is not assignable to `int`",
+      "severity": "error"
+    }
+  ]
+}

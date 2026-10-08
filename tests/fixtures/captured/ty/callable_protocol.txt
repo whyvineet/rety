@@ -1,0 +1,2 @@
+tests\fixtures\callable_protocol.py:41:14: error[invalid-argument-type] Argument to function `use_callable` is incorrect: Expected `HasCall`, found `def wrong_func(x: int) -> None`
+Found 1 diagnostic

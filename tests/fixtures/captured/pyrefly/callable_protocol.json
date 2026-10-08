@@ -1,0 +1,28 @@
+{
+  "errors": [
+    {
+      "line": 41,
+      "column": 14,
+      "stop_line": 41,
+      "stop_column": 24,
+      "path": "tests/fixtures/callable_protocol.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `(x: int) -> None` is not assignable to parameter `fn` with type `HasCall` in function `use_callable`",
+      "concise_description": "Argument `(x: int) -> None` is not assignable to parameter `fn` with type `HasCall` in function `use_callable`",
+      "severity": "error"
+    },
+    {
+      "line": 45,
+      "column": 14,
+      "stop_line": 45,
+      "stop_column": 25,
+      "path": "tests/fixtures/callable_protocol.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `(x: int) -> int` is not assignable to parameter `fn` with type `HasCall` in function `use_callable`",
+      "concise_description": "Argument `(x: int) -> int` is not assignable to parameter `fn` with type `HasCall` in function `use_callable`",
+      "severity": "error"
+    }
+  ]
+}

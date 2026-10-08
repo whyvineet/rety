@@ -44,7 +44,12 @@ import time
 import warnings
 from typing import Any
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
+from rety.adapters.base import (
+    AdapterCapabilities,
+    CheckerAdapter,
+    parse_version_output,
+    resolve_path,
+)
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # mypy severity strings → Severity enum
@@ -57,6 +62,8 @@ _SEVERITY_MAP: dict[str, Severity] = {
 
 class MypyAdapter(CheckerAdapter):
     """Adapter for mypy (https://mypy-lang.org/)."""
+
+    python_flag = "--python-executable"
 
     @property
     def name(self) -> str:
@@ -86,9 +93,7 @@ class MypyAdapter(CheckerAdapter):
                 timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
-                parts = result.stdout.strip().split()
-                if len(parts) >= 2:
-                    return parts[1]
+                return parse_version_output(result.stdout, "mypy")
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
         return None
@@ -115,6 +120,7 @@ class MypyAdapter(CheckerAdapter):
                 "--output=json",
                 "--no-incremental",
                 f"--cache-dir={cache_dir}",
+                *self.python_args(),
                 *paths,
             ]
             result = self._run_subprocess(cmd, cwd)
@@ -148,6 +154,8 @@ class MypyAdapter(CheckerAdapter):
             try:
                 obj = json.loads(line)
             except json.JSONDecodeError:
+                obj = None
+            if not isinstance(obj, dict):
                 skipped_lines.append(line[:120])  # truncate long lines in warning
                 continue
 
@@ -162,8 +170,8 @@ class MypyAdapter(CheckerAdapter):
 
             # mypy prints paths relative to its cwd when given relative args;
             # resolve against the invocation cwd recorded on RawInvocation.
-            file_raw: str = obj.get("file", "")
-            file_path = resolve_path(file_raw, raw.cwd) if file_raw else ""
+            file_raw = obj.get("file") or ""
+            file_path = resolve_path(str(file_raw), raw.cwd) if file_raw else ""
 
             diagnostics.append(
                 NormalizedDiagnostic(
@@ -175,15 +183,15 @@ class MypyAdapter(CheckerAdapter):
                     end_line=end_line,
                     end_col=end_col,
                     severity=severity,
-                    code=obj.get("code") or None,
-                    message=obj.get("message", ""),
+                    code=str(obj["code"]) if obj.get("code") else None,
+                    message=_message_with_hint(obj),
                     raw=line,  # per-diagnostic JSON line, not the full output
                 )
             )
 
         if skipped_lines:
             warnings.warn(
-                f"mypy adapter: {len(skipped_lines)} non-JSON line(s) skipped "
+                f"mypy adapter: {len(skipped_lines)} line(s) that are not JSON objects skipped "
                 f"(likely the syntax-error plain-text fallback of mypy < 2.0; "
                 f"mypy bug #17660). First skipped: {skipped_lines[0]!r}",
                 RuntimeWarning,
@@ -191,6 +199,19 @@ class MypyAdapter(CheckerAdapter):
             )
 
         return diagnostics
+
+
+def _message_with_hint(obj: dict[str, Any]) -> str:
+    """
+    The message plus mypy's "hint" (the follow-up notes mypy attaches to an
+    error, e.g. which stub package to install), on following lines. Pyright
+    and Pyrefly put the same kind of detail in multi-line messages.
+    """
+    message = str(obj.get("message") or "")
+    hint = obj.get("hint")
+    if hint:
+        return f"{message}\n{hint}" if message else str(hint)
+    return message
 
 
 def _as_int(value: Any, default: int) -> int:

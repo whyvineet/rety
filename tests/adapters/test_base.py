@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+import pytest
 
 from rety.adapters.base import resolve_path
 
@@ -18,6 +21,21 @@ def test_absolute_path_ignores_cwd(tmp_path: Path) -> None:
 
 def test_missing_cwd_falls_back_to_process_cwd() -> None:
     assert resolve_path("a.py", None) == str(Path("a.py").resolve())
+
+
+@pytest.mark.skipif(os.name != "nt", reason="drive letters exist only on Windows")
+def test_windows_drive_case_and_separators_are_normalized(tmp_path: Path) -> None:
+    """Pyright reports 'd:\\x.py'; mypy/ty report 'D:\\x.py'. Both must match."""
+    target = str((tmp_path / "a.py").resolve())
+    lower_drive = target[0].lower() + target[1:]
+
+    assert resolve_path(lower_drive, None) == target
+    assert resolve_path(target.replace("\\", "/"), None) == target
+
+
+@pytest.mark.skipif(os.name == "nt", reason="non-Windows behaviour")
+def test_windows_path_is_kept_verbatim_on_posix() -> None:
+    assert resolve_path(r"C:\proj\a.py", "/tmp") == r"C:\proj\a.py"
 
 
 def test_executable_resolves_through_shutil_which(monkeypatch) -> None:
@@ -47,3 +65,131 @@ def test_run_subprocess_decodes_utf8_regardless_of_locale() -> None:
     result = MypyAdapter()._run_subprocess([sys.executable, "-c", code], cwd=".")
 
     assert result.stdout == "a b → c"
+
+
+def test_timeout_kills_grandchild_that_holds_the_pipes(tmp_path: Path) -> None:
+    """
+    Pyright runs as a wrapper around `node`. A timeout must kill the whole
+    tree: otherwise Windows blocks until node exits, and POSIX leaks it.
+    """
+    import subprocess
+    import sys
+    import time
+
+    from rety.adapters.mypy import MypyAdapter
+
+    pid_file = tmp_path / "grandchild.pid"
+    code = (
+        "import subprocess, sys, time\n"
+        "g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        f"open({str(pid_file)!r}, 'w').write(str(g.pid))\n"
+        "time.sleep(60)\n"
+    )
+
+    start = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        MypyAdapter()._run_subprocess([sys.executable, "-c", code], cwd=".", timeout=2)
+    assert time.monotonic() - start < 20
+
+    if os.name != "nt":
+        grandchild = int(pid_file.read_text())
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            try:
+                os.kill(grandchild, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("grandchild process survived the timeout")
+
+
+def test_kill_running_checkers_stops_a_running_subprocess() -> None:
+    import sys
+    import threading
+    import time
+
+    from rety.adapters import base
+    from rety.adapters.mypy import MypyAdapter
+
+    errors: list[BaseException] = []
+
+    def run() -> None:
+        try:
+            MypyAdapter()._run_subprocess(
+                [sys.executable, "-c", "import time; time.sleep(60)"], cwd="."
+            )
+        except BaseException as exc:  # pragma: no cover - only on failure
+            errors.append(exc)
+
+    thread = threading.Thread(target=run)
+    start = time.monotonic()
+    thread.start()
+    while not base._running and time.monotonic() - start < 10:
+        time.sleep(0.05)
+
+    base.kill_running_checkers()
+    thread.join(timeout=20)
+
+    assert not thread.is_alive()
+    assert time.monotonic() - start < 20
+    assert not errors
+
+
+@pytest.mark.parametrize(
+    ("output", "name", "expected"),
+    [
+        ("mypy 2.3.1 (compiled: yes)", "mypy", "2.3.1"),
+        ("pyright 1.1.414", "pyright", "1.1.414"),
+        ("ty 0.0.83 (9c214798c 2026-09-21)", "ty", "0.0.83"),
+        # The PyPI pyright wrapper prints download progress on first run.
+        (
+            "* Install prerequisites\n* Installing pyright@1.1.414\npyright 1.1.414",
+            "pyright",
+            "1.1.414",
+        ),
+        ("pyrefly 1.3.1-dev", "pyrefly", "1.3.1-dev"),
+    ],
+)
+def test_parse_version_output(output: str, name: str, expected: str) -> None:
+    from rety.adapters.base import parse_version_output
+
+    assert parse_version_output(output, name) == expected
+
+
+@pytest.mark.parametrize(
+    ("adapter_name", "flag"),
+    [
+        ("mypy", "--python-executable"),
+        ("pyright", "--pythonpath"),
+        ("pyrefly", "--python-interpreter-path"),
+        ("ty", "--python"),
+    ],
+)
+def test_python_option_is_passed_with_each_checkers_own_flag(
+    monkeypatch: pytest.MonkeyPatch, adapter_name: str, flag: str
+) -> None:
+    import subprocess
+
+    from rety.adapters import ALL_ADAPTERS
+
+    adapter = ALL_ADAPTERS[adapter_name](python="/venv/bin/python")
+    seen: list[list[str]] = []
+
+    def fake_run(cmd: list[str], cwd: str, **_kw: object) -> subprocess.CompletedProcess[str]:
+        seen.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(adapter, "_run_subprocess", fake_run)
+    monkeypatch.setattr(adapter, "detect_version", lambda: "1.0")
+    adapter.run(["src"], cwd=".")
+
+    (cmd,) = seen
+    assert cmd[cmd.index(flag) + 1] == "/venv/bin/python"
+    assert cmd[-1] == "src"
+
+
+def test_no_python_option_adds_no_arguments() -> None:
+    from rety.adapters.mypy import MypyAdapter
+
+    assert MypyAdapter().python_args() == []

@@ -17,12 +17,17 @@ Extension point:
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
+import signal
 import subprocess
+import sys
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from rety.schema import NormalizedDiagnostic, RawInvocation
 
@@ -38,8 +43,14 @@ def resolve_path(file_raw: str, cwd: str | None) -> str:
     process's own working directory. Library callers that pass a different
     cwd to run_checkers() therefore get correct file paths. With cwd None the
     process cwd is used.
+
+    Every path goes through Path.resolve(), so on Windows the drive letter
+    case and separators are normalized: Pyright reports "d:\\x.py" where the
+    other checkers report "D:\\x.py", and the alignment engine groups by exact
+    path string. On other hosts a Windows-style path (from captured fixtures)
+    cannot be resolved meaningfully and is returned unchanged.
     """
-    if _WINDOWS_ABS_PATH_RE.match(file_raw):
+    if os.name != "nt" and _WINDOWS_ABS_PATH_RE.match(file_raw):
         return file_raw
     path = Path(file_raw)
     if not path.is_absolute() and cwd:
@@ -47,14 +58,33 @@ def resolve_path(file_raw: str, cwd: str | None) -> str:
     return str(path.resolve())
 
 
+def parse_version_output(text: str, name: str) -> str | None:
+    """
+    Extract a version from `<checker> --version` output.
+
+    Looks for "<name> X.Y[.Z...]" anywhere in the text rather than taking the
+    second word of the first line: the PyPI pyright wrapper prints download
+    progress before the version on its first run.
+    """
+    match = re.search(rf"\b{re.escape(name)}\s+v?(\d+(?:\.\d+)+\S*)", text)
+    if match:
+        return match.group(1)
+    parts = text.strip().split()
+    if len(parts) >= 2:
+        return parts[1]
+    return text.strip() or None
+
+
 @dataclass(frozen=True)
 class AdapterCapabilities:
     """
     Describes what structured data a checker adapter can produce.
 
-    Used by the alignment engine and renderers to adjust expectations —
-    e.g., don't penalize a ty cluster for missing end_col when ty's
-    concise format doesn't emit end positions.
+    Informational, for library callers and adapter authors. The alignment
+    engine does not read it: it works from each diagnostic's own fields, so
+    a missing end position is visible as end_line/end_col being None (and a
+    ty diagnostic with no end line is matched on its start line instead of
+    being capped at MEDIUM confidence).
     """
 
     has_end_col: bool = False
@@ -102,11 +132,34 @@ class CheckerAdapter(ABC):
     #: loaded machine.
     version_probe_timeout: float = 30.0
 
+    #: Exit codes that mean "the checker ran to completion" (0 = clean,
+    #: 1 = diagnostics found for every supported checker). Any other code with
+    #: no parsed diagnostics is treated as a failed run, not as "no issues".
+    ok_returncodes: frozenset[int] = frozenset({0, 1})
+
     _version_cache: str | None = None
     _version_probed: bool = False
 
-    def __init__(self, timeout: float | None = None) -> None:
+    #: The checker's CLI flag that selects the Python interpreter used to
+    #: resolve third-party imports. None if the checker has no such flag.
+    python_flag: str | None = None
+
+    def __init__(self, timeout: float | None = None, python: str | None = None) -> None:
         self.timeout = timeout
+        self.python = python
+
+    def python_args(self) -> list[str]:
+        """
+        Arguments that point the checker at `self.python`, if set.
+
+        Each checker otherwise finds an interpreter its own way (mypy uses
+        the one it is installed in, which for `uv tool install mypy` can't
+        see the project's dependencies), so they disagree about imports for
+        reasons that have nothing to do with typing.
+        """
+        if self.python is None or self.python_flag is None:
+            return []
+        return [self.python_flag, self.python]
 
     @property
     @abstractmethod
@@ -198,6 +251,14 @@ class CheckerAdapter(ABC):
         """Return True if this checker is installed and detectable."""
         return self.version() is not None
 
+    def is_on_path(self) -> bool:
+        """
+        True if the executable exists on PATH, whether or not it works.
+        Lets callers tell "not installed" from "installed but its version
+        probe failed" (a broken install, a missing node runtime, ...).
+        """
+        return shutil.which(self.name) is not None
+
     def _run_subprocess(
         self,
         cmd: list[str],
@@ -213,15 +274,88 @@ class CheckerAdapter(ABC):
         which is expected and normal. Raises subprocess.TimeoutExpired if the
         checker exceeds `timeout` (default: self.timeout); the runner turns
         that into a CheckerResult.error.
+
+        The checker runs in its own process group so that a timeout (or
+        kill_running_checkers() on Ctrl+C) kills the whole process tree.
+        subprocess.run(timeout=...) kills only the direct child: Pyright runs
+        as a wrapper (pyright.cmd or the PyPI shim) around `node`, and on
+        Windows run() then blocks in communicate() until the orphaned node
+        process exits and releases the pipes.
         """
-        return subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             # Checkers write UTF-8. Without an explicit encoding, text=True
             # decodes with the locale code page (cp1252 on Windows), which
             # turns Pyright's non-breaking spaces into "Â " mojibake.
             encoding="utf-8",
             errors="replace",
             cwd=cwd,
-            timeout=timeout if timeout is not None else self.timeout,
+            **_new_process_group_kwargs(),
         )
+        with _running_lock:
+            _running.add(proc)
+        try:
+            stdout, stderr = proc.communicate(
+                timeout=timeout if timeout is not None else self.timeout
+            )
+        except subprocess.TimeoutExpired as exc:
+            _kill_tree(proc)
+            exc.stdout, exc.stderr = proc.communicate()
+            raise
+        except BaseException:
+            _kill_tree(proc)
+            raise
+        finally:
+            with _running_lock:
+                _running.discard(proc)
+        return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+
+
+# ---------------------------------------------------------------------------
+# Process-tree management
+# ---------------------------------------------------------------------------
+
+_running: set[subprocess.Popen[str]] = set()
+_running_lock = threading.Lock()
+
+
+def _new_process_group_kwargs() -> dict[str, Any]:
+    """Popen arguments that put the child in a new process group / session."""
+    if sys.platform == "win32":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _kill_tree(proc: subprocess.Popen[str]) -> None:
+    """Kill proc and every process it started. Never raises."""
+    if proc.poll() is not None:
+        return
+    try:
+        if sys.platform == "win32":
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+                timeout=30,
+            )
+        else:
+            os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        proc.kill()  # fallback if the tree kill was unavailable
+    except OSError:
+        pass
+
+
+def kill_running_checkers() -> None:
+    """
+    Kill every checker subprocess still running. Called on Ctrl+C: because
+    checkers run in their own process group, the terminal's interrupt does
+    not reach them.
+    """
+    with _running_lock:
+        procs = list(_running)
+    for proc in procs:
+        _kill_tree(proc)

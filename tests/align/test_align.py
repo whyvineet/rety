@@ -52,6 +52,7 @@ def diag(
     *,
     file: str = FAKE_FILE,
     col: int | None = None,
+    end_col: int | None = None,
     severity: Severity = Severity.error,
     code: str | None = None,
     message: str = "test diagnostic",
@@ -64,7 +65,7 @@ def diag(
         start_line=start_line,
         start_col=col,
         end_line=end_line,
-        end_col=None,
+        end_col=end_col,
         severity=severity,
         code=code,
         message=message,
@@ -488,3 +489,230 @@ def test_pairwise_signals_are_not_repeated() -> None:
 
     (c,) = clusters
     assert c.alignment_signals == ["exact range L18-18: mypy ↔ pyright"]
+
+
+def test_most_common_tie_break_does_not_depend_on_hash_seed() -> None:
+    """Set iteration order changes with PYTHONHASHSEED; the result must not."""
+    import os
+    import subprocess
+    import sys
+
+    code = "from rety.align import _most_common; print(_most_common(['Call', 'Assign']))"
+    outputs = {
+        subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": str(seed)},
+        ).stdout.strip()
+        for seed in range(6)
+    }
+
+    assert outputs == {"Call"}  # first-seen value wins a tie
+
+
+def test_file_with_utf8_bom_is_still_enriched(tmp_path: Path) -> None:
+    target = tmp_path / "bom.py"
+    target.write_bytes(b"\xef\xbb\xbfx = int(\n    '1')\n")
+
+    (c,) = align([diag("mypy", 1, file=str(target), col=5)])
+
+    assert c.enclosing_node_type == "Call"
+
+
+def test_file_with_latin1_coding_cookie_is_enriched(tmp_path: Path) -> None:
+    target = tmp_path / "latin.py"
+    target.write_bytes(b"# -*- coding: latin-1 -*-\ns = '\xe9'\nn = int(s)\n")
+
+    (c,) = align([diag("mypy", 3, file=str(target), col=5)])
+
+    assert c.enclosing_node_type == "Call"
+
+
+def test_columns_after_non_ascii_text_find_the_right_statement(tmp_path: Path) -> None:
+    """ast gives UTF-8 byte offsets; checkers give character columns."""
+    source = "a = 'ééééé'; b = int(1)\n"
+    target = tmp_path / "u.py"
+    target.write_text(source, encoding="utf-8")
+    int_col = source.index("int(") + 1  # 1-indexed character column
+
+    from rety.align import _get_index, _lookup
+
+    index = _get_index(str(target))
+    assert index is not None
+    node_type, _scope, anchors = _lookup(index, 1, int_col)
+
+    assert node_type == "Call"
+    # Only `b = int(1)` and its Call contain the position, not `a = 'ééééé'`.
+    assert {(a.node_type, a.start_col) for a in anchors} == {("Assign", 13), ("Call", 17)}
+
+
+# ---------------------------------------------------------------------------
+# Column evidence on a shared line
+# ---------------------------------------------------------------------------
+
+
+def test_same_line_different_columns_is_not_high() -> None:
+    """mypy flags argument 1, Pyright flags argument 2 of the same call."""
+    (c,) = align(
+        [
+            diag("mypy", 3, 3, col=3, end_col=6),
+            diag("pyright", 3, 3, col=8, end_col=11),
+        ]
+    )
+
+    assert c.confidence == Confidence.LOW
+    assert c.alignment_signals == ["same line, different columns: mypy L3:3 ↔ pyright L3:8"]
+
+
+def test_same_token_on_same_line_is_high() -> None:
+    (c,) = align([diag("mypy", 3, 3, col=8, end_col=11), diag("pyright", 3, 3, col=8, end_col=11)])
+    assert c.confidence == Confidence.HIGH
+
+
+def test_start_column_inside_other_span_is_high() -> None:
+    """mypy blames the whole call, Pyright the argument inside it."""
+    (c,) = align([diag("mypy", 3, 3, col=1, end_col=20), diag("pyright", 3, 3, col=8, end_col=11)])
+    assert c.confidence == Confidence.HIGH
+
+
+def test_unknown_columns_fall_back_to_line_match() -> None:
+    (c,) = align([diag("mypy", 3, 3), diag("ty", 3, col=12)])
+    assert c.confidence == Confidence.HIGH
+
+
+def test_ty_without_end_column_left_of_other_span_still_matches() -> None:
+    (c,) = align([diag("ty", 3, col=4), diag("pyright", 3, 3, col=8, end_col=11)])
+    assert c.confidence == Confidence.HIGH
+
+
+# ---------------------------------------------------------------------------
+# Wide diagnostics must not chain unrelated ones together
+# ---------------------------------------------------------------------------
+
+
+def test_wide_diagnostic_does_not_swallow_body_diagnostics() -> None:
+    """mypy's 'Missing return statement' spans the whole function (real output)."""
+    clusters = align(
+        [
+            diag("mypy", 48, 55),  # missing return, whole function
+            diag("pyrefly", 48),  # same issue, def line only
+            diag("pyright", 51),  # unrelated error inside the body
+            diag("ty", 51),
+        ]
+    )
+
+    assert [sorted(c.checkers_present) for c in clusters] == [
+        ["mypy", "pyrefly"],
+        ["pyright", "ty"],
+    ]
+
+
+def test_two_wide_diagnostics_still_match_on_full_range() -> None:
+    (c,) = align([diag("mypy", 10, 20), diag("pyright", 11, 20)])
+    assert c.confidence == Confidence.MEDIUM
+
+
+def test_wide_diagnostic_matches_its_first_line_with_tolerance() -> None:
+    (c,) = align([diag("mypy", 10, 20), diag("ty", 11)], line_tolerance=1)
+    assert c.checkers_present == ["mypy", "ty"]
+
+
+def test_ty_without_end_line_can_be_high_against_multiline_range() -> None:
+    """ty's concise format has no end line; matching start lines is full evidence."""
+    (c,) = align([diag("pyright", 20, 22), diag("ty", 20)])
+
+    assert c.confidence == Confidence.HIGH
+    assert c.alignment_signals == ["same start line L20 (ty reports no end line): pyright ↔ ty"]
+
+
+def test_ty_on_a_later_line_of_multiline_range_is_still_medium() -> None:
+    (c,) = align([diag("pyright", 20, 22), diag("ty", 21)])
+    assert c.confidence == Confidence.MEDIUM
+
+
+def test_cluster_id_does_not_depend_on_checkout_location(tmp_path: Path) -> None:
+    """Same project in two directories (two CI runners, say) → same IDs."""
+    ids = []
+    for checkout in ("a", "b"):
+        root = tmp_path / checkout
+        target = str((root / "pkg" / "mod.py").resolve())
+        (c,) = align([diag("mypy", 7, file=target), diag("ty", 7, file=target)], root=str(root))
+        ids.append(c.cluster_id)
+
+    assert ids[0] == ids[1]
+
+
+def test_cluster_id_for_file_outside_root_uses_full_path(tmp_path: Path) -> None:
+    (inside,) = align([diag("mypy", 7, file=FAKE_FILE)], root=str(tmp_path))
+    (plain,) = align([diag("mypy", 7, file=FAKE_FILE)])
+    assert inside.cluster_id == plain.cluster_id
+
+
+def test_enclosing_scope_is_qualified_with_outer_classes(tmp_path: Path) -> None:
+    target = tmp_path / "scopes.py"
+    target.write_text(
+        "class Config:\n"
+        "    def __init__(self) -> None:\n"
+        "        def helper() -> int:\n"
+        "            return 'x'\n"
+    )
+
+    (c,) = align([diag("mypy", 4, file=str(target), col=13)])
+
+    assert c.enclosing_scope == "Config.__init__.helper"
+
+
+def test_ast_cache_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from rety import align as align_module
+
+    monkeypatch.setattr(align_module, "_INDEX_CACHE_SIZE", 3)
+    for i in range(10):
+        target = tmp_path / f"m{i}.py"
+        target.write_text(f"x = {i}\n")
+        align_module._get_index(str(target))
+
+    assert len(align_module._index_cache) == 3
+
+
+# ---------------------------------------------------------------------------
+# Crosswalk code families
+# ---------------------------------------------------------------------------
+
+
+def test_same_code_family_raises_anchor_match_to_medium() -> None:
+    call_line = _line_of("process(")
+    arg_line = _line_of("    42,")
+
+    (c,) = align(
+        [
+            diag("mypy", call_line, file=MULTILINE_FILE, code="arg-type"),
+            diag("pyright", arg_line, file=MULTILINE_FILE, code="reportArgumentType"),
+        ]
+    )
+
+    assert c.confidence == Confidence.MEDIUM
+    assert any("same code family 'argument-type'" in s for s in c.alignment_signals)
+    assert {d.code_family for d in c.diagnostics} == {"argument-type"}
+
+
+def test_different_code_family_leaves_anchor_match_low() -> None:
+    call_line = _line_of("process(")
+    arg_line = _line_of("    42,")
+
+    (c,) = align(
+        [
+            diag("mypy", call_line, file=MULTILINE_FILE, code="arg-type"),
+            diag("pyright", arg_line, file=MULTILINE_FILE, code="reportReturnType"),
+        ]
+    )
+
+    assert c.confidence == Confidence.LOW
+
+
+def test_code_family_alone_never_groups_diagnostics() -> None:
+    clusters = align(
+        [diag("mypy", 10, code="arg-type"), diag("ty", 30, code="invalid-argument-type")]
+    )
+    assert len(clusters) == 2

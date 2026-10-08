@@ -1,0 +1,2 @@
+{"file": "tests\\fixtures\\forward_references.py", "line": 29, "column": 11, "end_line": 29, "end_column": 23, "message": "Item \"None\" of \"Node | None\" has no attribute \"value\"", "hint": null, "code": "union-attr", "severity": "error"}
+{"file": "tests\\fixtures\\forward_references.py", "line": 35, "column": 11, "end_line": 35, "end_column": 23, "message": "Item \"None\" of \"Node | None\" has no attribute \"value\"", "hint": null, "code": "union-attr", "severity": "error"}

@@ -1,0 +1,65 @@
+[
+  {
+    "lines": [
+      18,
+      19
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "list-item",
+        "list-item",
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType",
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type",
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type",
+        "invalid-argument-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      23,
+      23
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  }
+]

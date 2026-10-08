@@ -1,0 +1,62 @@
+{
+    "version": "1.1.414",
+    "time": "1791437755524",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\return_none_implicit.py",
+            "severity": "error",
+            "message": "Function with declared return type \"int\" must return value on all code paths\n  \"None\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 26,
+                    "character": 29
+                },
+                "end": {
+                    "line": 26,
+                    "character": 32
+                }
+            },
+            "rule": "reportReturnType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\return_none_implicit.py",
+            "severity": "error",
+            "message": "Function with declared return type \"str\" must return value on all code paths\n  \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 33,
+                    "character": 41
+                },
+                "end": {
+                    "line": 33,
+                    "character": 44
+                }
+            },
+            "rule": "reportReturnType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\return_none_implicit.py",
+            "severity": "error",
+            "message": "Function with declared return type \"str\" must return value on all code paths\n  \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 47,
+                    "character": 34
+                },
+                "end": {
+                    "line": 47,
+                    "character": 37
+                }
+            },
+            "rule": "reportReturnType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 3,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.856
+    }
+}
+

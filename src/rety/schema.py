@@ -59,12 +59,16 @@ class Confidence(StrEnum):
     Only pairs of diagnostics from *different* checkers count as evidence.
 
     HIGH   — two different checkers report diagnostics with exactly matching
-             source ranges (same start_line, same end_line).
+             source ranges (same start_line, same end_line) whose columns,
+             where both are known, point at the same place.
     MEDIUM — two different checkers report diagnostics with overlapping (but
-             not identical) source ranges.
+             not identical) source ranges, or diagnostics joined by a shared
+             AST node or --line-tolerance whose codes are in the same
+             crosswalk family.
     LOW    — cross-checker members were joined only through a shared enclosing
-             AST node instance, --line-tolerance, or other members; or the
-             cluster holds diagnostics from a single checker only.
+             AST node instance, --line-tolerance, other members, or a shared
+             line whose columns point at different places; or the cluster
+             holds diagnostics from a single checker only.
     """
 
     HIGH = "high"
@@ -181,9 +185,9 @@ class NormalizedDiagnostic(BaseModel):
 
     code_family: str | None = None
     """
-    Cross-checker code family name from the error-code crosswalk table.
-    Always None in v0.1 — populated by rety/crosswalk.py in v0.2.
-    Locked here so the alignment engine interface doesn't need to change in v0.2.
+    Cross-checker code family name from the error-code crosswalk table
+    (rety/data/crosswalk.toml), e.g. "argument-type". Set by the alignment
+    engine, not by adapters. None if the code has no mapping.
     """
 
     message: str
@@ -209,8 +213,9 @@ class NormalizedDiagnostic(BaseModel):
 
     enclosing_scope: str | None = None
     """
-    The name of the nearest enclosing function or class. None until enrichment,
-    or None if the diagnostic is at module level.
+    Dotted name of the nearest enclosing function or class, including the
+    classes and functions around it (e.g. "Config.__init__"). None until
+    enrichment, or None if the diagnostic is at module level.
     """
 
     @model_validator(mode="after")
@@ -250,8 +255,10 @@ class DiagnosticCluster(BaseModel):
 
     cluster_id: str
     """
-    Deterministic 12-character hex ID derived from file + representative range.
-    Stable across rety invocations on the same code.
+    Deterministic 12-character hex ID derived from the file path (relative to
+    the project directory when the file is inside it) + representative range.
+    Stable across rety invocations, machines and checkouts of the same code.
+    It changes when the cluster's lines move.
     """
 
     file: str
@@ -306,11 +313,48 @@ class ComparisonReport(BaseModel):
 
     schema_version: int = Field(default=SCHEMA_VERSION)
 
+    # ---- How this report was produced (for reproducing or auditing it) ----
+    rety_version: str | None = None
+    """Version of rety that produced the report."""
+
+    cwd: str | None = None
+    """Directory the checkers ran in; their config files were found relative to it."""
+
+    paths: list[str] = Field(default_factory=list)
+    """Paths passed to the checkers, exactly as given on the command line."""
+
+    python: str | None = None
+    """The --python interpreter every checker was pointed at, if any."""
+
+    line_tolerance: int = 0
+    """The --line-tolerance used for clustering."""
+
+    # ---- Per-checker results ----
     checkers_run: list[str]
-    """Names of the checkers that were actually invoked (not all four, if fewer were available)."""
+    """
+    Names of the checkers that ran to completion (not all four, if fewer were
+    available). A checker that crashed, timed out or failed on its config is
+    listed in checker_errors instead, so it never counts toward M in "N/M".
+    """
+
+    checker_errors: dict[str, str] = Field(default_factory=dict)
+    """Checkers that were invoked but failed, mapped to the failure message."""
+
+    checker_warnings: dict[str, list[str]] = Field(default_factory=dict)
+    """
+    Parser warnings per checker (only checkers that had any), e.g. output
+    lines the adapter did not recognise. Usually means the checker's output
+    format changed and that checker's results may be incomplete.
+    """
 
     checker_versions: dict[str, str | None]
     """Detected version per checker. Value is None if version detection failed."""
+
+    checker_returncodes: dict[str, int] = Field(default_factory=dict)
+    """Exit code per checker that ran. Non-zero is normal when it found issues."""
+
+    checker_durations_ms: dict[str, float] = Field(default_factory=dict)
+    """Wall-clock run time per checker that ran, in milliseconds."""
 
     total_diagnostics: dict[str, int]
     """Raw diagnostic count per checker, before clustering."""
@@ -327,6 +371,8 @@ class ComparisonReport(BaseModel):
 def make_cluster_id(file: str, start_line: int, end_line: int) -> str:
     """
     Generate a stable, short cluster ID from file + representative range.
+    Pass a project-relative, "/"-separated path for IDs that are portable
+    across machines (align() does this when given a root).
     12 hex chars (48 bits) — collision-resistant for any realistic diagnostic count.
     """
     payload = f"{file}:{start_line}:{end_line}".encode()

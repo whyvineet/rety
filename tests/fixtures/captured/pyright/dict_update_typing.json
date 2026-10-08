@@ -1,0 +1,62 @@
+{
+    "version": "1.1.414",
+    "time": "1791437680465",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dict_update_typing.py",
+            "severity": "error",
+            "message": "Could not assign item in TypedDict\n  \"timeout\" is not a defined key in \"Config\"",
+            "range": {
+                "start": {
+                    "line": 39,
+                    "character": 4
+                },
+                "end": {
+                    "line": 39,
+                    "character": 16
+                }
+            },
+            "rule": "reportGeneralTypeIssues"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dict_update_typing.py",
+            "severity": "error",
+            "message": "Could not assign item in TypedDict\n  \"Literal[42]\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 42,
+                    "character": 4
+                },
+                "end": {
+                    "line": 42,
+                    "character": 13
+                }
+            },
+            "rule": "reportGeneralTypeIssues"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\dict_update_typing.py",
+            "severity": "error",
+            "message": "Type \"dict[str, str]\" is not assignable to declared type \"Config\"\n  \"port\" is required in \"Config\"",
+            "range": {
+                "start": {
+                    "line": 48,
+                    "character": 25
+                },
+                "end": {
+                    "line": 48,
+                    "character": 46
+                }
+            },
+            "rule": "reportAssignmentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 3,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.525
+    }
+}
+

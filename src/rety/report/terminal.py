@@ -20,7 +20,7 @@ Output structure:
     └──────────────────────────────────────────────────────────────┘
     [Summary table: checker × severity counts]
     ── src/api.py ──────────────────────────────────────────────────
-      3/4 ● HIGH  L42  in handle_request [Call]
+      3/4  * HIGH  L42  in handle_request  [Call]
            mypy     error  Argument 1 ... [arg-type]
            pyright  error  Argument of type ... [reportArgumentType]
            pyrefly  error  Expected `int`, got `str` [bad-argument-type]
@@ -126,6 +126,9 @@ def _render_header(con: Console, report: ComparisonReport) -> None:
         checker_parts.append(f"[{style}]{rich_escape(checker)}[/] {rich_escape(version)}")
 
     checkers_str = "   ".join(checker_parts)
+    if report.checker_errors:
+        failed = ", ".join(rich_escape(name) for name in report.checker_errors)
+        checkers_str += f"\n[bold red]failed:[/] {failed} [dim](not counted; see stderr)[/]"
     con.print()
     con.print(
         Panel(
@@ -288,6 +291,10 @@ def _render_footer(con: Console, report: ComparisonReport, m: int) -> None:
 
 def _short_path(path: str) -> str:
     """Return a display-friendly path (relative to cwd if shorter)."""
+    if not path:
+        # Project-level diagnostics (a config error, a duplicate module) can
+        # come without a file; don't print an empty header for them.
+        return "(no file)"
     try:
         return str(Path(path).relative_to(Path.cwd()))
     except ValueError:

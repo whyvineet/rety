@@ -1,0 +1,46 @@
+{
+    "version": "1.1.414",
+    "time": "1791437718067",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\lambda_inference.py",
+            "severity": "error",
+            "message": "Type \"(x: int) -> int\" is not assignable to declared type \"(int) -> str\"\n  Type \"(x: int) -> int\" is not assignable to type \"(int) -> str\"\n    Function return type \"int\" is incompatible with type \"str\"\n      \"int\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 30,
+                    "character": 37
+                },
+                "end": {
+                    "line": 30,
+                    "character": 48
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\lambda_inference.py",
+            "severity": "error",
+            "message": "Argument of type \"(x: int) -> int\" cannot be assigned to parameter \"fn\" of type \"(int) -> str\" in function \"apply\"\n  Type \"(x: int) -> int\" is not assignable to type \"(int) -> str\"\n    Function return type \"int\" is incompatible with type \"str\"\n      \"int\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 37,
+                    "character": 6
+                },
+                "end": {
+                    "line": 37,
+                    "character": 21
+                }
+            },
+            "rule": "reportArgumentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 2,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.844
+    }
+}
+

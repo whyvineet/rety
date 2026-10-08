@@ -1,0 +1,4 @@
+tests\fixtures\none_coercion.py:30:17: error[invalid-argument-type] Argument to function `len` is incorrect: Expected `Sized`, found `str | None`
+tests\fixtures\none_coercion.py:33:14: error[unresolved-attribute] Attribute `strip` is not defined on `None` in union `str | None`
+tests\fixtures\none_coercion.py:41:14: error[unresolved-attribute] Attribute `strip` is not defined on `None` in union `str | None`
+Found 3 diagnostics

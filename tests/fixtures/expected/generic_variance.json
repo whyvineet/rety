@@ -1,0 +1,60 @@
+[
+  {
+    "lines": [
+      49,
+      49
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  },
+  {
+    "lines": [
+      52,
+      52
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "AnnAssign",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  }
+]

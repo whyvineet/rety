@@ -1,0 +1,1 @@
+{"file": "tests\\fixtures\\exception_handling.py", "line": 20, "column": 0, "end_line": 24, "end_column": 12, "message": "Missing return statement", "hint": null, "code": "return", "severity": "error"}

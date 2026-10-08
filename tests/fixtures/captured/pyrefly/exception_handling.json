@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 20,
+      "column": 16,
+      "stop_line": 20,
+      "stop_column": 19,
+      "path": "tests/fixtures/exception_handling.py",
+      "code": -2,
+      "name": "bad-return",
+      "description": "Function declared to return `int`, but one or more paths are missing an explicit `return`",
+      "concise_description": "Function declared to return `int`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+[
+  {
+    "lines": [
+      30,
+      30
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "list_with_nones",
+    "codes": {
+      "mypy": [
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      33,
+      33
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "list_with_nones",
+    "codes": {
+      "mypy": [
+        "union-attr"
+      ],
+      "pyright": [
+        "reportOptionalMemberAccess"
+      ],
+      "pyrefly": [
+        "missing-attribute"
+      ],
+      "ty": [
+        "unresolved-attribute"
+      ]
+    }
+  },
+  {
+    "lines": [
+      41,
+      41
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "optional_chaining",
+    "codes": {
+      "mypy": [
+        "union-attr"
+      ],
+      "pyright": [
+        "reportOptionalMemberAccess"
+      ],
+      "pyrefly": [
+        "missing-attribute"
+      ],
+      "ty": [
+        "unresolved-attribute"
+      ]
+    }
+  }
+]

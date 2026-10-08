@@ -1,0 +1,113 @@
+[
+  {
+    "lines": [
+      25,
+      25
+    ],
+    "checkers": [
+      "pyrefly"
+    ],
+    "confidence": "low",
+    "node": "Assign",
+    "scope": null,
+    "codes": {
+      "pyrefly": [
+        "implicit-any-lambda"
+      ]
+    }
+  },
+  {
+    "lines": [
+      28,
+      28
+    ],
+    "checkers": [
+      "mypy"
+    ],
+    "confidence": "low",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "no-untyped-call"
+      ]
+    }
+  },
+  {
+    "lines": [
+      31,
+      31
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "AnnAssign",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "assignment",
+        "return-value"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  },
+  {
+    "lines": [
+      38,
+      38
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "arg-type",
+        "return-value"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      48,
+      48
+    ],
+    "checkers": [
+      "pyrefly"
+    ],
+    "confidence": "low",
+    "node": "AnnAssign",
+    "scope": null,
+    "codes": {
+      "pyrefly": [
+        "implicit-any-lambda"
+      ]
+    }
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "errors": [
+    {
+      "line": 36,
+      "column": 15,
+      "stop_line": 36,
+      "stop_column": 28,
+      "path": "tests/fixtures/starred_args.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `int` is not assignable to parameter `b` with type `str` in function `takes_two`",
+      "concise_description": "Argument `int` is not assignable to parameter `b` with type `str` in function `takes_two`",
+      "severity": "error"
+    },
+    {
+      "line": 49,
+      "column": 15,
+      "stop_line": 49,
+      "stop_column": 20,
+      "path": "tests/fixtures/starred_args.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `int` is not assignable to parameter `b` with type `str` in function `takes_two`",
+      "concise_description": "Argument `int` is not assignable to parameter `b` with type `str` in function `takes_two`",
+      "severity": "error"
+    }
+  ]
+}

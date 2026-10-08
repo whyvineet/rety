@@ -95,3 +95,15 @@ def test_multiline_message_is_collapsed_to_one_line() -> None:
     out = _render_to_text(_report(_diag("pyright", 2, msg, code="reportReturnType")))
     assert 'return type "int" "str" is not assignable' in out
     assert "\xa0" not in out
+
+
+def test_diagnostic_without_file_gets_a_readable_header() -> None:
+    no_file = _diag("mypy", 1, "Duplicate module named 'm'").model_copy(update={"file": ""})
+    report = ComparisonReport(
+        checkers_run=["mypy"],
+        checker_versions={"mypy": "1.0"},
+        total_diagnostics={"mypy": 1},
+        clusters=align([no_file]),
+    )
+
+    assert "(no file)" in _render_to_text(report)

@@ -1,0 +1,46 @@
+{
+    "version": "1.1.414",
+    "time": "1791437703219",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\generic_variance.py",
+            "severity": "error",
+            "message": "Type \"Box[int]\" is not assignable to declared type \"Box[float]\"\n  \"Box[int]\" is not assignable to \"Box[float]\"\n    Type parameter \"T@Box\" is invariant, but \"int\" is not the same as \"float\"",
+            "range": {
+                "start": {
+                    "line": 48,
+                    "character": 27
+                },
+                "end": {
+                    "line": 48,
+                    "character": 39
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\generic_variance.py",
+            "severity": "error",
+            "message": "Type \"list[int]\" is not assignable to declared type \"list[float]\"\n  \"list[int]\" is not assignable to \"list[float]\"\n    Type parameter \"_T@list\" is invariant, but \"int\" is not the same as \"float\"\n    Consider switching from \"list\" to \"Sequence\" which is covariant",
+            "range": {
+                "start": {
+                    "line": 51,
+                    "character": 26
+                },
+                "end": {
+                    "line": 51,
+                    "character": 34
+                }
+            },
+            "rule": "reportAssignmentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 2,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.494
+    }
+}
+

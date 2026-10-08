@@ -53,7 +53,12 @@ import time
 import warnings
 from typing import Any
 
-from rety.adapters.base import AdapterCapabilities, CheckerAdapter, resolve_path
+from rety.adapters.base import (
+    AdapterCapabilities,
+    CheckerAdapter,
+    parse_version_output,
+    resolve_path,
+)
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 _SEVERITY_MAP: dict[str, Severity] = {
@@ -67,6 +72,8 @@ _SEVERITY_MAP: dict[str, Severity] = {
 
 class PyreflyAdapter(CheckerAdapter):
     """Adapter for Pyrefly (https://pyrefly.org/)."""
+
+    python_flag = "--python-interpreter-path"
 
     @property
     def name(self) -> str:
@@ -96,10 +103,7 @@ class PyreflyAdapter(CheckerAdapter):
                 timeout=self.version_probe_timeout,
             )
             if result.returncode == 0:
-                parts = result.stdout.strip().split()
-                if len(parts) >= 2:
-                    return parts[1]
-                return result.stdout.strip() or None
+                return parse_version_output(result.stdout, "pyrefly")
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
         return None
@@ -109,7 +113,7 @@ class PyreflyAdapter(CheckerAdapter):
         version = self.version()
         start = time.monotonic()
 
-        cmd = [self.executable, "check", "--output-format", "json", *paths]
+        cmd = [self.executable, "check", "--output-format", "json", *self.python_args(), *paths]
         result = self._run_subprocess(cmd, cwd)
 
         duration_ms = (time.monotonic() - start) * 1000

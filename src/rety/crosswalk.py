@@ -1,33 +1,51 @@
 """
-rety error-code crosswalk table — v0.2 target, stub in v0.1.
+rety error-code crosswalk.
 
-This module maps checker-native error codes to cross-checker "code family" names.
-A code family is a short string (e.g., "arg-type", "return-type", "missing-annotation")
-that groups semantically equivalent codes across checkers.
+Maps checker-native error codes to cross-checker "code family" names. A code
+family is a short string (e.g. "argument-type", "return-type") that groups
+codes meaning the same kind of problem across checkers.
 
-v0.1 status:
-    lookup_code_family() always returns None. The return type is locked here so
-    the alignment engine's interface does not need to change when this is populated
-    in v0.2.
+The table lives in rety/data/crosswalk.toml. Every mapping there is backed by
+real captured checker output (see the comments in that file); codes too broad
+to belong to one family are left out on purpose.
 
-v0.2 plan:
-    - CROSSWALK dict maps (checker, code) -> code_family
-    - Populated from a hand-curated TOML data file (data/crosswalk.toml), versioned
-      per checker-version pair, not as a static Python constant
-    - ty rule descriptions available via: ty explain rule --output-format json <code>
-    - The crosswalk is used as a confidence booster in align.py, never as the sole
-      clustering key
+How it is used:
+    The alignment engine sets NormalizedDiagnostic.code_family from this table
+    and treats a shared family as extra evidence when scoring a cluster: an
+    alignment signal, and a LOW -> MEDIUM boost for cross-checker pairs that
+    were otherwise joined only by a shared statement or --line-tolerance. It
+    is never the sole clustering key.
 
-Contribution guide (v0.2+):
-    To add an entry: edit data/crosswalk.toml. One line per mapping.
-    Format: [[mapping]]\n checker = "mypy"\n code = "arg-type"\n family = "argument-type"
+Contribution guide:
+    Add a code to an existing [family] in data/crosswalk.toml, or add a new
+    family, with a comment naming the fixture and line whose captured output
+    shows the codes together. A (checker, code) pair may appear in only one
+    family; tests/test_crosswalk.py enforces that.
 """
 
 from __future__ import annotations
 
-# Crosswalk table — empty in v0.1, populated from data/crosswalk.toml in v0.2.
-# Type: dict[(checker_name, code), code_family]
-_CROSSWALK: dict[tuple[str, str], str] = {}
+import tomllib
+from functools import cache
+from importlib import resources
+
+
+@cache
+def _load() -> dict[tuple[str, str], str]:
+    """Load data/crosswalk.toml into {(checker, code): family}."""
+    text = resources.files("rety").joinpath("data/crosswalk.toml").read_text(encoding="utf-8")
+    table: dict[tuple[str, str], str] = {}
+    for family, checkers in tomllib.loads(text).items():
+        for checker, codes in checkers.items():
+            for code in codes:
+                key = (checker, code)
+                if key in table:
+                    raise ValueError(
+                        f"crosswalk.toml: {checker} code {code!r} is in both "
+                        f"{table[key]!r} and {family!r}"
+                    )
+                table[key] = family
+    return table
 
 
 def lookup_code_family(checker: str, code: str | None) -> str | None:
@@ -39,13 +57,9 @@ def lookup_code_family(checker: str, code: str | None) -> str | None:
         code:    Checker-native error/rule code, or None.
 
     Returns:
-        A code family string (e.g., "argument-type"), or None if no mapping
+        A code family string (e.g. "argument-type"), or None if no mapping
         exists or code is None.
-
-    Note:
-        Always returns None in v0.1. Return type is locked so the alignment
-        engine interface is stable for v0.2.
     """
     if code is None:
         return None
-    return _CROSSWALK.get((checker, code))
+    return _load().get((checker, code))

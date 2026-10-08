@@ -1,0 +1,75 @@
+{
+    "version": "1.1.414",
+    "time": "1791437654540",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\assignment_narrowing.py",
+            "severity": "information",
+            "message": "Type of \"x\" is \"Literal[42]\"",
+            "range": {
+                "start": {
+                    "line": 19,
+                    "character": 16
+                },
+                "end": {
+                    "line": 19,
+                    "character": 17
+                }
+            }
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\assignment_narrowing.py",
+            "severity": "information",
+            "message": "Type of \"x\" is \"Literal[42, 'hello']\"",
+            "range": {
+                "start": {
+                    "line": 29,
+                    "character": 16
+                },
+                "end": {
+                    "line": 29,
+                    "character": 17
+                }
+            }
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\assignment_narrowing.py",
+            "severity": "information",
+            "message": "Type of \"item\" is \"int | str\"",
+            "range": {
+                "start": {
+                    "line": 38,
+                    "character": 16
+                },
+                "end": {
+                    "line": 38,
+                    "character": 20
+                }
+            }
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\assignment_narrowing.py",
+            "severity": "error",
+            "message": "Type \"int | str\" is not assignable to declared type \"int\"\n  Type \"int | str\" is not assignable to type \"int\"\n    \"str\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 41,
+                    "character": 13
+                },
+                "end": {
+                    "line": 41,
+                    "character": 19
+                }
+            },
+            "rule": "reportAssignmentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 1,
+        "warningCount": 0,
+        "informationCount": 3,
+        "timeInSec": 1.994
+    }
+}
+

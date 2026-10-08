@@ -1,0 +1,40 @@
+{
+  "errors": [
+    {
+      "line": 27,
+      "column": 30,
+      "stop_line": 27,
+      "stop_column": 33,
+      "path": "tests/fixtures/return_none_implicit.py",
+      "code": -2,
+      "name": "bad-return",
+      "description": "Function declared to return `int`, but one or more paths are missing an explicit `return`",
+      "concise_description": "Function declared to return `int`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    },
+    {
+      "line": 34,
+      "column": 42,
+      "stop_line": 34,
+      "stop_column": 45,
+      "path": "tests/fixtures/return_none_implicit.py",
+      "code": -2,
+      "name": "bad-return",
+      "description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "concise_description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    },
+    {
+      "line": 48,
+      "column": 35,
+      "stop_line": 48,
+      "stop_column": 38,
+      "path": "tests/fixtures/return_none_implicit.py",
+      "code": -2,
+      "name": "bad-return",
+      "description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "concise_description": "Function declared to return `str`, but one or more paths are missing an explicit `return`",
+      "severity": "error"
+    }
+  ]
+}

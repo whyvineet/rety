@@ -1,0 +1,40 @@
+{
+  "errors": [
+    {
+      "line": 30,
+      "column": 17,
+      "stop_line": 30,
+      "stop_column": 21,
+      "path": "tests/fixtures/none_coercion.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `str | None` is not assignable to parameter `obj` with type `Sized` in function `len`\n  Protocol `Sized` requires attribute `__len__`\n  The declared type does not allow `None`. Consider narrowing the value with an `is not None` check.",
+      "concise_description": "Argument `str | None` is not assignable to parameter `obj` with type `Sized` in function `len`",
+      "severity": "error"
+    },
+    {
+      "line": 33,
+      "column": 14,
+      "stop_line": 33,
+      "stop_column": 24,
+      "path": "tests/fixtures/none_coercion.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `NoneType` has no attribute `strip`",
+      "concise_description": "Object of class `NoneType` has no attribute `strip`",
+      "severity": "error"
+    },
+    {
+      "line": 41,
+      "column": 14,
+      "stop_line": 41,
+      "stop_column": 25,
+      "path": "tests/fixtures/none_coercion.py",
+      "code": -2,
+      "name": "missing-attribute",
+      "description": "Object of class `NoneType` has no attribute `strip`",
+      "concise_description": "Object of class `NoneType` has no attribute `strip`",
+      "severity": "error"
+    }
+  ]
+}

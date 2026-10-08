@@ -1,0 +1,67 @@
+# rety error-code crosswalk.
+#
+# Each [family] lists, per checker, the native codes that report the same
+# kind of problem. rety uses a shared family only as extra evidence when
+# scoring a cluster (an alignment signal, and LOW -> MEDIUM for pairs that
+# were otherwise joined only by a shared statement or --line-tolerance).
+# It never decides on its own which diagnostics are grouped.
+#
+# Every mapping here is backed by real captured output: the planted error in
+# a tests/fixtures/*.py file that all listed codes were reported for, at the
+# checker versions in tests/CHECKER_VERSIONS.md. Codes too broad to belong to
+# one family (mypy "misc", Pyright "reportCallIssue" and
+# "reportGeneralTypeIssues") are left out on purpose.
+#
+# A (checker, code) pair may appear in only one family.
+
+[return-type]
+# basic_errors.py L9, return_none_implicit.py, exception_handling.py
+mypy = ["return-value", "return"]
+pyright = ["reportReturnType"]
+pyrefly = ["bad-return"]
+ty = ["invalid-return-type"]
+
+[assignment-type]
+# basic_errors.py L12, generic_variance.py, overload_arity.py L40
+mypy = ["assignment"]
+pyright = ["reportAssignmentType"]
+pyrefly = ["bad-assignment"]
+ty = ["invalid-assignment"]
+
+[undefined-name]
+# basic_errors.py L13
+mypy = ["name-defined"]
+pyright = ["reportUndefinedVariable"]
+pyrefly = ["unknown-name"]
+ty = ["unresolved-reference"]
+
+[argument-type]
+# callable_protocol.py, dataclass_fields.py, multiline_call.py, none_coercion.py
+mypy = ["arg-type"]
+pyright = ["reportArgumentType"]
+pyrefly = ["bad-argument-type"]
+ty = ["invalid-argument-type"]
+
+[optional-member-access]
+# forward_references.py, none_coercion.py
+mypy = ["union-attr"]
+pyright = ["reportOptionalMemberAccess"]
+pyrefly = ["missing-attribute"]
+ty = ["unresolved-attribute"]
+
+[no-matching-overload]
+# overload_arity.py L36-37
+mypy = ["call-overload"]
+pyrefly = ["no-matching-overload"]
+ty = ["no-matching-overload"]
+
+[typeddict-key]
+# dict_update_typing.py L40, L58
+mypy = ["typeddict-unknown-key", "literal-required"]
+pyrefly = ["bad-typed-dict-key"]
+ty = ["invalid-key", "missing-typed-dict-key"]
+
+[missing-annotation]
+# untyped_function.py L20
+mypy = ["no-untyped-def"]
+pyrefly = ["unannotated-return", "implicit-any-parameter"]

@@ -1,0 +1,89 @@
+[
+  {
+    "lines": [
+      27,
+      29
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "FunctionDef",
+    "scope": "get_value",
+    "codes": {
+      "mypy": [
+        "return"
+      ],
+      "pyright": [
+        "reportReturnType"
+      ],
+      "pyrefly": [
+        "bad-return"
+      ],
+      "ty": [
+        "invalid-return-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      34,
+      37
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "FunctionDef",
+    "scope": "another_missing",
+    "codes": {
+      "mypy": [
+        "return"
+      ],
+      "pyright": [
+        "reportReturnType"
+      ],
+      "pyrefly": [
+        "bad-return"
+      ],
+      "ty": [
+        "invalid-return-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      48,
+      55
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "FunctionDef",
+    "scope": "conditional_return",
+    "codes": {
+      "mypy": [
+        "return"
+      ],
+      "pyright": [
+        "reportReturnType"
+      ],
+      "pyrefly": [
+        "bad-return"
+      ],
+      "ty": [
+        "invalid-return-type"
+      ]
+    }
+  }
+]

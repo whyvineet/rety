@@ -1,0 +1,89 @@
+[
+  {
+    "lines": [
+      9,
+      9
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Return",
+    "scope": "greet",
+    "codes": {
+      "mypy": [
+        "return-value"
+      ],
+      "pyright": [
+        "reportReturnType"
+      ],
+      "pyrefly": [
+        "bad-return"
+      ],
+      "ty": [
+        "invalid-return-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      12,
+      12
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "AnnAssign",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  },
+  {
+    "lines": [
+      13,
+      13
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Assign",
+    "scope": null,
+    "codes": {
+      "mypy": [
+        "name-defined"
+      ],
+      "pyright": [
+        "reportUndefinedVariable"
+      ],
+      "pyrefly": [
+        "unknown-name"
+      ],
+      "ty": [
+        "unresolved-reference"
+      ]
+    }
+  }
+]

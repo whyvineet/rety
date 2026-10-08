@@ -1,0 +1,40 @@
+{
+  "errors": [
+    {
+      "line": 18,
+      "column": 5,
+      "stop_line": 18,
+      "stop_column": 15,
+      "path": "tests/fixtures/multiline_call.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `list[str]` is not assignable to parameter `items` with type `list[int]` in function `process`",
+      "concise_description": "Argument `list[str]` is not assignable to parameter `items` with type `list[int]` in function `process`",
+      "severity": "error"
+    },
+    {
+      "line": 19,
+      "column": 5,
+      "stop_line": 19,
+      "stop_column": 7,
+      "path": "tests/fixtures/multiline_call.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `Literal[42]` is not assignable to parameter `label` with type `str` in function `process`",
+      "concise_description": "Argument `Literal[42]` is not assignable to parameter `label` with type `str` in function `process`",
+      "severity": "error"
+    },
+    {
+      "line": 23,
+      "column": 5,
+      "stop_line": 23,
+      "stop_column": 27,
+      "path": "tests/fixtures/multiline_call.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `list[str]` is not assignable to parameter `items` with type `list[int]` in function `process`",
+      "concise_description": "Argument `list[str]` is not assignable to parameter `items` with type `list[int]` in function `process`",
+      "severity": "error"
+    }
+  ]
+}

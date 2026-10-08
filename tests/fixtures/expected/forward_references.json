@@ -1,0 +1,60 @@
+[
+  {
+    "lines": [
+      29,
+      29
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Return",
+    "scope": "first_value",
+    "codes": {
+      "mypy": [
+        "union-attr"
+      ],
+      "pyright": [
+        "reportOptionalMemberAccess"
+      ],
+      "pyrefly": [
+        "missing-attribute"
+      ],
+      "ty": [
+        "unresolved-attribute"
+      ]
+    }
+  },
+  {
+    "lines": [
+      35,
+      35
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Return",
+    "scope": "deep_value",
+    "codes": {
+      "mypy": [
+        "union-attr"
+      ],
+      "pyright": [
+        "reportOptionalMemberAccess"
+      ],
+      "pyrefly": [
+        "missing-attribute"
+      ],
+      "ty": [
+        "unresolved-attribute"
+      ]
+    }
+  }
+]

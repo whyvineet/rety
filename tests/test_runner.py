@@ -11,7 +11,7 @@ import time
 import pytest
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter
-from rety.runner import CheckerUnavailableError, run_checkers
+from rety.runner import CheckerFailedError, CheckerUnavailableError, run_checkers
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 
@@ -26,8 +26,16 @@ class FakeAdapter(CheckerAdapter):
         timeout_after: float | None = None,
         timeout: float | None = None,
         severity: Severity = Severity.error,
+        returncode: int = 1,
+        stdout: str | None = None,
+        stderr: str = "",
+        on_path: bool | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
+        self._on_path = available if on_path is None else on_path
+        self._returncode = returncode
+        self._stdout = stdout
+        self._stderr = stderr
         self._name = name
         self._available = available
         self._delay = delay
@@ -46,6 +54,9 @@ class FakeAdapter(CheckerAdapter):
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities()
 
+    def is_on_path(self) -> bool:
+        return self._on_path
+
     def detect_version(self) -> str | None:
         self.version_calls += 1
         return "1.0" if self._available else None
@@ -61,14 +72,16 @@ class FakeAdapter(CheckerAdapter):
             raise RuntimeError(f"{self._name} exploded")
         return RawInvocation(
             checker=self._name,
-            returncode=1,
-            stdout=f"{self._name}-out",
-            stderr="",
+            returncode=self._returncode,
+            stdout=f"{self._name}-out" if self._stdout is None else self._stdout,
+            stderr=self._stderr,
             duration_ms=1.0,
             version="1.0",
         )
 
     def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+        if not raw.stdout:
+            return []
         return [
             NormalizedDiagnostic(
                 checker=self._name,
@@ -143,9 +156,87 @@ def test_version_is_probed_once_per_adapter() -> None:
     assert adapter.version_calls == 1
 
 
+def test_fatal_exit_without_diagnostics_is_a_failure() -> None:
+    """Pyright exit 3 (config error) must not look like 'no issues found'."""
+    bad = FakeAdapter("pyright", returncode=3, stdout="", stderr="Config file is invalid")
+    (r,) = run_checkers([bad], paths=["src"], cwd="/tmp")
+
+    assert isinstance(r.error, CheckerFailedError)
+    assert r.error.returncode == 3
+    assert "Config file is invalid" in str(r.error)
+
+
+def test_fatal_exit_with_diagnostics_is_not_a_failure() -> None:
+    """mypy exits 2 on syntax errors but still reports them; that is a real result."""
+    (r,) = run_checkers([FakeAdapter("mypy", returncode=2)], paths=["src"], cwd="/tmp")
+    assert r.succeeded
+    assert len(r.diagnostics) == 1
+
+
+def test_clean_exit_without_diagnostics_is_not_a_failure() -> None:
+    (r,) = run_checkers([FakeAdapter("ty", returncode=0, stdout="")], paths=["src"], cwd="/tmp")
+    assert r.succeeded
+    assert r.diagnostics == []
+
+
 def test_timeout_is_reported_as_error_not_crash() -> None:
     results = run_checkers([FakeAdapter("slow", timeout_after=5)], paths=["src"], cwd="/tmp")
     (r,) = results
     assert not r.succeeded
     assert "timed out" in str(r.error)
     assert r.diagnostics == []
+
+
+class WarningAdapter(FakeAdapter):
+    def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+        import warnings
+
+        warnings.warn("ty adapter: 1 line(s) did not match", RuntimeWarning, stacklevel=2)
+        return super().parse(raw)
+
+
+def test_parse_warnings_are_recorded_on_the_result_every_time() -> None:
+    """Python shows a warning once per location by default; rety must not lose repeats."""
+    for _ in range(2):
+        (r,) = run_checkers([WarningAdapter("ty")], paths=["src"], cwd="/tmp")
+        assert r.succeeded
+        assert r.warnings == ["ty adapter: 1 line(s) did not match"]
+
+
+def test_parse_exception_is_captured_with_the_real_invocation() -> None:
+    class Exploding(FakeAdapter):
+        def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+            raise ValueError("bad output")
+
+    (r,) = run_checkers([Exploding("x")], paths=["src"], cwd="/tmp")
+    assert isinstance(r.error, ValueError)
+    assert r.invocation.stdout == "x-out"
+
+
+def test_require_all_says_when_checker_is_installed_but_broken() -> None:
+    broken = FakeAdapter("pyright", available=False, on_path=True)
+    with pytest.raises(CheckerUnavailableError, match="'pyright --version' failed"):
+        run_checkers([broken], paths=["src"], cwd="/tmp", require_all=True)
+
+
+def test_paths_starting_with_dash_are_not_passed_as_options() -> None:
+    adapter = FakeAdapter("a")
+    run_checkers([adapter], paths=["-weird.py", "src"], cwd="/tmp")
+    assert adapter.seen_paths == ["./-weird.py", "src"]
+
+
+def test_public_api_is_importable_from_package_root() -> None:
+    import rety
+
+    for name in rety.__all__:
+        assert hasattr(rety, name), name
+
+
+def test_package_attributes_do_not_shadow_submodules() -> None:
+    import importlib
+
+    import rety
+
+    for submodule in ("align", "runner", "schema", "cli", "crosswalk"):
+        module = importlib.import_module(f"rety.{submodule}")
+        assert getattr(rety, submodule) is module, submodule

@@ -44,11 +44,14 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import io
 import itertools
-from collections import defaultdict
+import tokenize
+from collections import Counter, OrderedDict, defaultdict
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 
+from rety.crosswalk import lookup_code_family
 from rety.schema import (
     Confidence,
     DiagnosticCluster,
@@ -85,6 +88,10 @@ _SCOPE_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 # call with diagnostics at both ends from merging on anchor evidence alone.
 _AST_MERGE_PROXIMITY = 3
 
+# A diagnostic spanning more lines than this is "wide" and matches narrow
+# diagnostics by its first line only (see _ranges_overlap).
+_WIDE_SPAN_LINES = 3
+
 
 # ---------------------------------------------------------------------------
 # AST index
@@ -93,8 +100,10 @@ _AST_MERGE_PROXIMITY = 3
 
 @dataclass(frozen=True)
 class _Span:
-    """Source span of one AST node. Lines are 1-indexed; columns follow the
-    ast module convention (0-indexed start, exclusive 0-indexed end)."""
+    """Source span of one AST node. Lines are 1-indexed; columns are
+    0-indexed *character* offsets (exclusive end). The ast module reports
+    UTF-8 byte offsets; _build_index converts them so they compare correctly
+    with the character columns checkers report."""
 
     node_type: str
     start_line: int
@@ -143,22 +152,47 @@ class _Enriched:
     anchors: frozenset[_Span]
 
 
-_index_cache: dict[str, _FileIndex | None] = {}
+# Keyed by SHA-256 of file content. Bounded (least recently used entries
+# are evicted) so a long-lived process that aligns many projects, e.g. rety
+# used as a library, doesn't keep every file's index forever.
+_INDEX_CACHE_SIZE = 512
+_index_cache: OrderedDict[str, _FileIndex | None] = OrderedDict()
 
 
-def _build_index(tree: ast.Module) -> _FileIndex:
+def _split_source_lines(source: str) -> list[str]:
+    """Split on the same line endings the tokenizer uses (not str.splitlines,
+    which also breaks on form feeds and U+2028 and would shift line numbers)."""
+    return source.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+
+def _char_col(lines: list[str], lineno: int, byte_col: int) -> int:
+    """Convert an ast UTF-8 byte offset on a 1-indexed line to a character offset."""
+    if not 1 <= lineno <= len(lines):
+        return byte_col
+    line = lines[lineno - 1]
+    if line.isascii():
+        return byte_col
+    return len(line.encode("utf-8")[:byte_col].decode("utf-8", errors="ignore"))
+
+
+def _build_index(tree: ast.Module, lines: list[str]) -> _FileIndex:
     """Index every statement and Call node by the lines it covers."""
     nodes_by_line: dict[int, list[_Span]] = defaultdict(list)
     scopes_by_line: dict[int, list[tuple[int, str]]] = defaultdict(list)
 
     # Explicit stack instead of recursion: deeply nested expressions can
-    # exceed the interpreter recursion limit.
-    stack: list[tuple[ast.AST, int]] = [(tree, 0)]
+    # exceed the interpreter recursion limit. Each entry carries the dotted
+    # name of its enclosing scope ("Config.__init__"), so a bare "__init__"
+    # never leaves the reader guessing which class it belongs to.
+    stack: list[tuple[ast.AST, int, str]] = [(tree, 0, "")]
     while stack:
-        node, depth = stack.pop()
+        node, depth, scope_prefix = stack.pop()
         for child in ast.iter_child_nodes(node):
             child_depth = depth + 1
-            stack.append((child, child_depth))
+            child_prefix = scope_prefix
+            if isinstance(child, _SCOPE_TYPES):
+                child_prefix = f"{scope_prefix}.{child.name}" if scope_prefix else child.name
+            stack.append((child, child_depth, child_prefix))
 
             start = getattr(child, "lineno", None)
             end = getattr(child, "end_lineno", None)
@@ -166,13 +200,14 @@ def _build_index(tree: ast.Module) -> _FileIndex:
                 continue
 
             if isinstance(child, (ast.stmt, ast.Call)):
+                start_col = _char_col(lines, start, child.col_offset)
                 end_col = child.end_col_offset
                 span = _Span(
                     node_type=type(child).__name__,
                     start_line=start,
-                    start_col=child.col_offset,
+                    start_col=start_col,
                     end_line=end,
-                    end_col=end_col if end_col is not None else child.col_offset,
+                    end_col=_char_col(lines, end, end_col) if end_col is not None else start_col,
                     depth=child_depth,
                 )
                 for line in range(start, end + 1):
@@ -180,7 +215,7 @@ def _build_index(tree: ast.Module) -> _FileIndex:
 
             if isinstance(child, _SCOPE_TYPES):
                 for line in range(start, end + 1):
-                    scopes_by_line[line].append((child_depth, child.name))
+                    scopes_by_line[line].append((child_depth, child_prefix))
 
     return _FileIndex(dict(nodes_by_line), dict(scopes_by_line))
 
@@ -198,17 +233,37 @@ def _get_index(file_path: str) -> _FileIndex | None:
 
     key = hashlib.sha256(content).hexdigest()
     if key in _index_cache:
+        _index_cache.move_to_end(key)
         return _index_cache[key]
 
     index: _FileIndex | None
     try:
-        tree = ast.parse(content.decode("utf-8", errors="replace"))
-        index = _build_index(tree)
+        source = _decode_source(content)
+        index = _build_index(ast.parse(source), _split_source_lines(source))
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         index = None
 
     _index_cache[key] = index
+    if len(_index_cache) > _INDEX_CACHE_SIZE:
+        _index_cache.popitem(last=False)
     return index
+
+
+def _decode_source(content: bytes) -> str:
+    """
+    Decode Python source the way the interpreter does: honour a UTF-8 BOM
+    (detect_encoding returns "utf-8-sig", which strips it) and a PEP 263
+    coding cookie. A plain .decode("utf-8") keeps the BOM as U+FEFF, which
+    ast.parse rejects.
+    """
+    try:
+        encoding, _ = tokenize.detect_encoding(io.BytesIO(content).readline)
+    except SyntaxError:  # unknown or conflicting coding cookie
+        encoding = "utf-8"
+    try:
+        return content.decode(encoding, errors="replace")
+    except LookupError:
+        return content.decode("utf-8", errors="replace")
 
 
 def _lookup(
@@ -251,12 +306,17 @@ def _enrich_diagnostics(
     file_path: str,
 ) -> list[_Enriched]:
     """
-    Attach enclosing_node_type and enclosing_scope to each diagnostic and
-    pair it with its anchor spans. Returns new objects (the model is frozen).
+    Attach code_family (from the crosswalk), enclosing_node_type and
+    enclosing_scope to each diagnostic and pair it with its anchor spans.
+    Returns new objects (the model is frozen).
 
     If the file can't be indexed, the diagnostics are returned unchanged with
     no anchors.
     """
+    diagnostics = [
+        diag.model_copy(update={"code_family": lookup_code_family(diag.checker, diag.code)})
+        for diag in diagnostics
+    ]
     index = _get_index(file_path)
     if index is None:
         return [_Enriched(diag, frozenset()) for diag in diagnostics]
@@ -289,12 +349,57 @@ def _ranges_overlap(
     """
     True if d1 and d2 are in the same file and their line ranges overlap or
     are within `tolerance` lines of each other.
+
+    A wide diagnostic (more than _WIDE_SPAN_LINES lines, e.g. mypy's "Missing
+    return statement", which spans the whole function) matches a narrow one
+    only by its first line. Otherwise every diagnostic inside that function
+    body would chain into one cluster with it. Two wide diagnostics still
+    compare on their full ranges.
     """
     if d1.file != d2.file:
         return False
     s1, e1 = _effective_range(d1)
     s2, e2 = _effective_range(d2)
+    wide1 = e1 - s1 > _WIDE_SPAN_LINES
+    wide2 = e2 - s2 > _WIDE_SPAN_LINES
+    if wide1 != wide2:
+        e1 = s1 if wide1 else e1
+        e2 = s2 if wide2 else e2
     return s1 <= e2 + tolerance and s2 <= e1 + tolerance
+
+
+def _columns_disagree(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> bool:
+    """
+    True if two diagnostics on the same single line clearly point at
+    different places: both report a start column and neither start column
+    falls inside the other's column span. Two arguments of one call, say.
+
+    Unknown columns never disagree: ty reports no end column, and a checker
+    with no column at all gives no evidence either way.
+    """
+    if d1.start_line != d2.start_line or d1.start_col is None or d2.start_col is None:
+        return False
+    if d1.start_col == d2.start_col:
+        return False
+    return not (_col_in_span(d1.start_col, d2) or _col_in_span(d2.start_col, d1))
+
+
+def _same_start_unknown_end(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> bool:
+    """True if the start lines match, exactly one side reports no end line,
+    and known columns don't point at different places."""
+    if d1.start_line != d2.start_line or (d1.end_line is None) == (d2.end_line is None):
+        return False
+    return not _columns_disagree(d1, d2)
+
+
+def _col_in_span(col: int, d: NormalizedDiagnostic) -> bool:
+    """True if col lies in d's [start_col, end_col) span on d's start line."""
+    assert d.start_col is not None
+    if d.end_col is None or (d.end_line is not None and d.end_line != d.start_line):
+        # Unknown or multi-line end: only the start column is reliable, and
+        # it was already compared; anything to its right may be inside.
+        return col >= d.start_col
+    return d.start_col <= col < d.end_col
 
 
 # ---------------------------------------------------------------------------
@@ -389,11 +494,15 @@ def _score_cluster(
     Assign a confidence level and produce alignment signals for a cluster.
 
     Confidence rules:
-        HIGH   — at least one cross-checker pair with exactly matching line ranges
-        MEDIUM — at least one cross-checker pair with overlapping ranges (not exact)
+        HIGH   — at least one cross-checker pair with exactly matching line
+                 ranges whose known columns agree (see _columns_disagree)
+        MEDIUM — at least one cross-checker pair with overlapping ranges (not
+                 exact), or joined by a shared anchor node or line tolerance
+                 with the same crosswalk code family (rety/crosswalk.py)
         LOW    — cross-checker pairs were joined only through a shared anchor
-                 node, line tolerance, or other members; or the cluster holds
-                 diagnostics from a single checker only
+                 node, line tolerance, other members, or a shared line with
+                 different columns; or the cluster holds diagnostics from a
+                 single checker only
 
     Only pairs from *different* checkers count. Two diagnostics from the same
     checker on the same line say nothing about agreement between checkers, so
@@ -416,6 +525,7 @@ def _score_cluster(
 
     has_exact = False
     has_overlap = False
+    has_family = False  # a weak pair (anchor/tolerance) shares a crosswalk family
 
     for e1, e2 in itertools.combinations(members, 2):
         d1, d2 = e1.diag, e2.diag
@@ -426,18 +536,37 @@ def _score_cluster(
         r2 = _effective_range(d2)
         pair = f"{d1.checker} L{d1.start_line} ↔ {d2.checker} L{d2.start_line}"
 
-        if r1 == r2:
+        if r1 == r2 and _columns_disagree(d1, d2):
+            signals.append(
+                f"same line, different columns: {d1.checker} L{d1.start_line}:{d1.start_col}"
+                f" ↔ {d2.checker} L{d2.start_line}:{d2.start_col}"
+            )
+        elif r1 == r2:
             has_exact = True
             signals.append(f"exact range L{r1[0]}-{r1[1]}: {d1.checker} ↔ {d2.checker}")
+        elif _same_start_unknown_end(d1, d2):
+            # ty's concise format has no end line, so it can never match a
+            # multi-line range exactly. Matching start lines is the most
+            # evidence it can give; don't cap it at MEDIUM for that.
+            has_exact = True
+            no_end = d1.checker if d1.end_line is None else d2.checker
+            signals.append(
+                f"same start line L{d1.start_line} ({no_end} reports no end line): "
+                f"{d1.checker} ↔ {d2.checker}"
+            )
         elif _ranges_overlap(d1, d2, tolerance=0):
             has_overlap = True
             signals.append(
                 f"overlapping ranges: {d1.checker} L{r1[0]}-{r1[1]} ↔ {d2.checker} L{r2[0]}-{r2[1]}"
             )
         elif (anchor := _shared_anchor(e1, e2)) is not None:
-            signals.append(f"same {anchor.label()}: {pair}")
+            family = _shared_family(d1, d2)
+            has_family = has_family or family is not None
+            signals.append(f"same {anchor.label()}{_family_note(family)}: {pair}")
         elif tolerance and _ranges_overlap(d1, d2, tolerance):
-            signals.append(f"within {tolerance} line(s): {pair}")
+            family = _shared_family(d1, d2)
+            has_family = has_family or family is not None
+            signals.append(f"within {tolerance} line(s){_family_note(family)}: {pair}")
         else:
             signals.append(f"linked through other members: {pair}")
 
@@ -447,9 +576,20 @@ def _score_cluster(
 
     if has_exact:
         return Confidence.HIGH, signals
-    if has_overlap:
+    if has_overlap or has_family:
         return Confidence.MEDIUM, signals
     return Confidence.LOW, signals
+
+
+def _shared_family(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> str | None:
+    """The crosswalk code family both diagnostics belong to, if any."""
+    if d1.code_family is not None and d1.code_family == d2.code_family:
+        return d1.code_family
+    return None
+
+
+def _family_note(family: str | None) -> str:
+    return f", same code family '{family}'" if family else ""
 
 
 # ---------------------------------------------------------------------------
@@ -458,13 +598,34 @@ def _score_cluster(
 
 
 def _most_common(values: list[str]) -> str | None:
-    return max(set(values), key=values.count) if values else None
+    """Most frequent value; ties go to the value seen first, so output never
+    depends on set iteration order (which varies with PYTHONHASHSEED)."""
+    if not values:
+        return None
+    counts = Counter(values)
+    return max(counts, key=lambda value: counts[value])
+
+
+def _id_path(file_path: str, root: str | None) -> str:
+    """
+    The path used in cluster_id: relative to root with "/" separators when
+    the file is under root, so the same code checked out in different
+    directories (or on different OSes) gets the same IDs. Otherwise the
+    path as given.
+    """
+    if root:
+        try:
+            return PurePath(file_path).relative_to(root).as_posix()
+        except ValueError:
+            pass
+    return file_path
 
 
 def _build_cluster(
     members: list[_Enriched],
     file_path: str,
     tolerance: int,
+    root: str | None = None,
 ) -> DiagnosticCluster:
     """Construct a DiagnosticCluster from a list of enriched members."""
     diags = [e.diag for e in members]
@@ -474,7 +635,7 @@ def _build_cluster(
     confidence, signals = _score_cluster(members, tolerance)
 
     return DiagnosticCluster(
-        cluster_id=make_cluster_id(file_path, start_line, end_line),
+        cluster_id=make_cluster_id(_id_path(file_path, root), start_line, end_line),
         file=file_path,
         representative_range=(start_line, end_line),
         enclosing_node_type=_most_common(
@@ -496,6 +657,7 @@ def _build_cluster(
 def align(
     diagnostics: list[NormalizedDiagnostic],
     line_tolerance: int = 0,
+    root: str | None = None,
 ) -> list[DiagnosticCluster]:
     """
     Align diagnostics from multiple checkers into clusters.
@@ -509,6 +671,10 @@ def align(
         line_tolerance: How many lines apart two diagnostics can be and still
                         be considered range-overlapping. Default 0 (overlap or
                         touching only).
+        root:           Project directory (rety passes the invocation cwd).
+                        Cluster IDs hash file paths relative to it, so they
+                        match across machines and checkouts. None hashes the
+                        absolute path.
 
     Returns:
         List of DiagnosticCluster, sorted by file path then representative
@@ -516,6 +682,11 @@ def align(
     """
     if not diagnostics:
         return []
+
+    # Diagnostic paths are resolved (symlinks, drive case); resolve root the
+    # same way so relative_to() matches.
+    if root:
+        root = str(Path(root).resolve())
 
     # Stage 1: group by file
     by_file: dict[str, list[NormalizedDiagnostic]] = defaultdict(list)
@@ -537,7 +708,7 @@ def align(
         # Stage 5: build DiagnosticCluster objects with confidence scores
         for members in merged_clusters:
             if members:
-                all_clusters.append(_build_cluster(members, file_path, line_tolerance))
+                all_clusters.append(_build_cluster(members, file_path, line_tolerance, root))
 
     all_clusters.sort(key=lambda c: (c.file, c.representative_range[0]))
     return all_clusters

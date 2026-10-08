@@ -1,0 +1,3 @@
+tests\fixtures\generic_variance.py:49:28: error[invalid-assignment] Object of type `Box[int]` is not assignable to `Box[float]`
+tests\fixtures\generic_variance.py:52:27: error[invalid-assignment] Object of type `list[int]` is not assignable to `list[float]`
+Found 2 diagnostics

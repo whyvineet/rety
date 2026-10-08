@@ -1,0 +1,5 @@
+tests\fixtures\dict_update_typing.py:40:7: error[invalid-key] Unknown key "timeout" for TypedDict `Config`
+tests\fixtures\dict_update_typing.py:43:17: error[invalid-assignment] Invalid assignment to key "host" with declared type `str` on TypedDict `Config`: value of type `Literal[42]`
+tests\fixtures\dict_update_typing.py:49:26: error[missing-typed-dict-key] Missing required key 'port' in TypedDict `Config` constructor
+tests\fixtures\dict_update_typing.py:58:14: error[invalid-key] TypedDict `Config` can only be subscripted with a string literal key, got key of type `str`
+Found 4 diagnostics

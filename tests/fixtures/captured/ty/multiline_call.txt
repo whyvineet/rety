@@ -1,0 +1,4 @@
+tests\fixtures\multiline_call.py:18:5: error[invalid-argument-type] Argument to function `process` is incorrect: Expected `list[int]`, found `list[int | str]`
+tests\fixtures\multiline_call.py:19:5: error[invalid-argument-type] Argument to function `process` is incorrect: Expected `str`, found `Literal[42]`
+tests\fixtures\multiline_call.py:23:5: error[invalid-argument-type] Argument to function `process` is incorrect: Expected `list[int]`, found `list[str]`
+Found 3 diagnostics

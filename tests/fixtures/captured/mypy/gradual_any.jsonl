@@ -1,0 +1,1 @@
+{"file": "tests\\fixtures\\gradual_any.py", "line": 24, "column": 4, "end_line": 24, "end_column": 23, "message": "Returning Any from function declared to return \"str\"", "hint": null, "code": "no-any-return", "severity": "error"}

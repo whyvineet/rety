@@ -6,8 +6,40 @@ on:
       - "v*"
 
 jobs:
+  check:
+    name: Test and verify version
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: Tag must match the version in pyproject.toml
+        run: |
+          version=$(uv run --no-project python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match pyproject.toml version $version (expected v$version)"
+            exit 1
+          fi
+
+      - name: Install
+        run: uv sync --all-groups
+
+      - name: Lint, type-check and test
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+          uv run mypy src
+          uv run pytest -q
+
   build:
     name: Build distribution
+    needs: check
     runs-on: ubuntu-latest
 
     steps:

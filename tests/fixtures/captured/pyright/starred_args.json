@@ -1,0 +1,46 @@
+{
+    "version": "1.1.414",
+    "time": "1791437762676",
+    "generalDiagnostics": [
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\starred_args.py",
+            "severity": "error",
+            "message": "Expected 2 positional arguments",
+            "range": {
+                "start": {
+                    "line": 35,
+                    "character": 4
+                },
+                "end": {
+                    "line": 35,
+                    "character": 28
+                }
+            },
+            "rule": "reportCallIssue"
+        },
+        {
+            "file": "d:\\rety\\rety\\tests\\fixtures\\starred_args.py",
+            "severity": "error",
+            "message": "Argument of type \"int\" cannot be assigned to parameter \"b\" of type \"str\" in function \"takes_two\"\n  \"int\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 48,
+                    "character": 15
+                },
+                "end": {
+                    "line": 48,
+                    "character": 19
+                }
+            },
+            "rule": "reportArgumentType"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 1,
+        "errorCount": 2,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 0.924
+    }
+}
+

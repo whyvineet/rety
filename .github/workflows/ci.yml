@@ -13,10 +13,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ["3.11", "3.12", "3.13"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
           enable-cache: true
@@ -34,11 +34,20 @@ jobs:
   smoke:
     # Runs rety against the real checkers so an upstream output-format change
     # is caught even when the unit tests (which use captured fixtures) pass.
-    name: smoke / real checkers
-    runs-on: ubuntu-latest
+    # Runs on every OS: path handling differs per platform (Pyright reports a
+    # lowercase drive letter on Windows), and only real checker output shows it.
+    name: smoke / real checkers / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
           enable-cache: true
@@ -49,14 +58,13 @@ jobs:
           uv run rety check --require-all --format json --output report.json tests/fixtures/basic_errors.py
           uv run python - <<'EOF'
           import json
-          report = json.load(open("report.json"))
+          report = json.load(open("report.json", encoding="utf-8"))
           assert report["checkers_run"] == ["mypy", "pyright", "pyrefly", "ty"], report["checkers_run"]
           assert all(n > 0 for n in report["total_diagnostics"].values()), report["total_diagnostics"]
+          assert not report["checker_errors"], report["checker_errors"]
+          # Parser warnings mean a checker's output format changed.
+          assert not report["checker_warnings"], report["checker_warnings"]
           full = [c for c in report["clusters"] if len(c["checkers_present"]) == 4]
-          assert len(full) >= 2, "expected the three planted errors to cluster across all checkers"
+          assert len(full) >= 3, "expected the three planted errors to cluster across all checkers"
           print("smoke OK:", report["total_diagnostics"])
           EOF
-      - name: Unmatched-format warnings must not appear
-        run: |
-          uv run rety check --require-all tests/fixtures/basic_errors.py 2> stderr.txt || true
-          if grep -q "RuntimeWarning" stderr.txt; then cat stderr.txt; exit 1; fi

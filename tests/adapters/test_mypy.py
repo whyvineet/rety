@@ -188,6 +188,14 @@ def test_parse_tolerates_non_json_lines(recwarn: pytest.WarningsChecker) -> None
     assert "mypy adapter" in str(recwarn.list[0].message)
 
 
+def test_parse_skips_json_lines_that_are_not_objects() -> None:
+    """A bare JSON scalar or array is valid JSON but not a diagnostic; must not crash."""
+    output = "\n".join(["123", '["x"]', "null", _line(file="ok.py", message="real")])
+    with pytest.warns(RuntimeWarning, match="not JSON objects"):
+        diagnostics = ADAPTER.parse(_make_raw(output))
+    assert [d.message for d in diagnostics] == ["real"]
+
+
 def test_parse_all_non_json_produces_empty_with_warning(recwarn: pytest.WarningsChecker) -> None:
     raw = _make_raw("foo.py:1: error: invalid syntax\nbar.py:2: error: unexpected indent")
     assert ADAPTER.parse(raw) == []
@@ -245,3 +253,15 @@ def test_relative_file_resolves_against_invocation_cwd(tmp_path: Path) -> None:
     )
     (d,) = ADAPTER.parse(raw)
     assert d.file == str((tmp_path / "pkg" / "mod.py").resolve())
+
+
+def test_hint_is_kept_after_the_message() -> None:
+    """Real mypy 2.3.1 output for a missing stub package."""
+    hint = 'Hint: "python3 -m pip install types-PyYAML"\n(or run "mypy --install-types")'
+    (d,) = ADAPTER.parse(_make_raw(_line(message="Library stubs not installed", hint=hint)))
+    assert d.message == f"Library stubs not installed\n{hint}"
+
+
+def test_null_hint_leaves_message_unchanged() -> None:
+    (d,) = ADAPTER.parse(_make_raw(_line(message="plain", hint=None)))
+    assert d.message == "plain"

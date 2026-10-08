@@ -1,0 +1,124 @@
+[
+  {
+    "lines": [
+      20,
+      20
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "assignment_basic",
+    "codes": {
+      "mypy": [
+        "misc"
+      ],
+      "pyright": [
+        null
+      ],
+      "pyrefly": [
+        "unimported-directive",
+        "reveal-type"
+      ],
+      "ty": [
+        "undefined-reveal",
+        "revealed-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      30,
+      30
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "assignment_conditional",
+    "codes": {
+      "mypy": [
+        "misc"
+      ],
+      "pyright": [
+        null
+      ],
+      "pyrefly": [
+        "unimported-directive",
+        "reveal-type"
+      ],
+      "ty": [
+        "undefined-reveal",
+        "revealed-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      39,
+      39
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "list_mutation",
+    "codes": {
+      "mypy": [
+        "misc"
+      ],
+      "pyright": [
+        null
+      ],
+      "pyrefly": [
+        "unimported-directive",
+        "reveal-type"
+      ],
+      "ty": [
+        "undefined-reveal",
+        "revealed-type"
+      ]
+    }
+  },
+  {
+    "lines": [
+      42,
+      42
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "AnnAssign",
+    "scope": "list_mutation",
+    "codes": {
+      "mypy": [
+        "assignment"
+      ],
+      "pyright": [
+        "reportAssignmentType"
+      ],
+      "pyrefly": [
+        "bad-assignment"
+      ],
+      "ty": [
+        "invalid-assignment"
+      ]
+    }
+  }
+]

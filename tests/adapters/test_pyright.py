@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from rety.adapters.pyright import PyrightAdapter
 from rety.schema import RawInvocation, Severity
 
@@ -155,8 +157,51 @@ def test_parse_severity_warning_mapped_correctly() -> None:
     assert d.severity == Severity.warning
 
 
-def test_parse_malformed_json_returns_empty() -> None:
-    assert ADAPTER.parse(_make_raw("this is not json at all")) == []
+def _entry(**overrides: object) -> dict[str, object]:
+    entry: dict[str, object] = {
+        "file": "/abs/a.py",
+        "severity": "error",
+        "message": "m",
+        "range": {"start": {"line": 4, "character": 2}, "end": {"line": 4, "character": 9}},
+    }
+    entry.update(overrides)
+    return entry
+
+
+def test_null_severity_defaults_to_error_instead_of_crashing() -> None:
+    (d,) = ADAPTER.parse(_make_raw(_doc(_entry(severity=None))))
+    assert d.severity == Severity.error
+
+
+def test_entries_without_usable_range_are_skipped_not_placed_on_line_1() -> None:
+    entries = [
+        _entry(range=None),
+        _entry(range="bad"),
+        _entry(range={"start": {"character": 3}}),
+        "not a dict",
+        _entry(message="kept"),
+    ]
+    with pytest.warns(RuntimeWarning, match="4 entries"):
+        diagnostics = ADAPTER.parse(_make_raw(_doc(*entries)))  # type: ignore[arg-type]
+
+    assert [d.message for d in diagnostics] == ["kept"]
+    assert diagnostics[0].start_line == 5
+
+
+def test_missing_character_is_unknown_column_not_column_1() -> None:
+    entry = _entry(range={"start": {"line": 0}, "end": {"line": 0}})
+    (d,) = ADAPTER.parse(_make_raw(_doc(entry)))
+    assert (d.start_line, d.start_col, d.end_line, d.end_col) == (1, None, 1, None)
+
+
+def test_document_without_diagnostics_list_warns() -> None:
+    with pytest.warns(RuntimeWarning, match="generalDiagnostics"):
+        assert ADAPTER.parse(_make_raw(json.dumps({"generalDiagnostics": "x"}))) == []
+
+
+def test_parse_malformed_json_warns_and_returns_empty() -> None:
+    with pytest.warns(RuntimeWarning, match="not valid JSON"):
+        assert ADAPTER.parse(_make_raw("this is not json at all")) == []
 
 
 def test_parse_checker_name_is_pyright() -> None:

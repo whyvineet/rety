@@ -1,0 +1,28 @@
+{
+  "errors": [
+    {
+      "line": 49,
+      "column": 28,
+      "stop_line": 49,
+      "stop_column": 40,
+      "path": "tests/fixtures/generic_variance.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`Box[int]` is not assignable to `Box[float]`",
+      "concise_description": "`Box[int]` is not assignable to `Box[float]`",
+      "severity": "error"
+    },
+    {
+      "line": 52,
+      "column": 27,
+      "stop_line": 52,
+      "stop_column": 35,
+      "path": "tests/fixtures/generic_variance.py",
+      "code": -2,
+      "name": "bad-assignment",
+      "description": "`list[int]` is not assignable to `list[float]`",
+      "concise_description": "`list[int]` is not assignable to `list[float]`",
+      "severity": "error"
+    }
+  ]
+}

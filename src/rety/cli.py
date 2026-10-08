@@ -19,6 +19,7 @@ Usage examples:
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 
 import click
@@ -137,6 +138,20 @@ def _ensure_utf8_streams() -> None:
     help="Seconds to wait for each checker before giving up on it. 0 = no limit.",
 )
 @click.option(
+    "--python",
+    "python",
+    # Absolute: mypy rejects a relative --python-executable, and every
+    # checker would otherwise resolve it its own way.
+    type=click.Path(exists=True, resolve_path=True),
+    default=None,
+    metavar="PATH",
+    help=(
+        "Python interpreter every checker should use to resolve third-party "
+        "imports, e.g. .venv/bin/python. Without it each "
+        "checker finds one its own way and they can disagree about imports."
+    ),
+)
+@click.option(
     "--fail-on",
     type=click.Choice(["none", "error", "any"], case_sensitive=False),
     default="none",
@@ -156,6 +171,7 @@ def check(
     verbose: bool,
     require_all: bool,
     timeout: float,
+    python: str | None,
     fail_on: str,
 ) -> None:
     """Run type checkers on PATH(s) and compare their diagnostics.
@@ -179,6 +195,8 @@ def check(
         0  run completed and the --fail-on threshold was not met
         1  the --fail-on threshold was met
         2  usage error, no checker available, or --require-all not satisfied
+        3  a checker crashed, timed out or failed on its config; the report
+           is printed but is incomplete
     """
     if output and output_format != "json":
         raise click.UsageError("--output is only valid with --format json.")
@@ -190,7 +208,9 @@ def check(
 
     # Parse and validate checker names
     checker_names = _parse_checker_names(checker)
-    adapters = [ALL_ADAPTERS[name](timeout=timeout or None) for name in checker_names]
+    adapters = [
+        ALL_ADAPTERS[name](timeout=timeout or None, python=python) for name in checker_names
+    ]
 
     # Run checkers concurrently
     try:
@@ -206,15 +226,19 @@ def check(
 
     # Tell the user which selected checkers were not found, and how to get them.
     ran = {result.checker_name for result in results}
-    skipped = [name for name in checker_names if name not in ran]
+    skipped = [adapter for adapter in adapters if adapter.name not in ran]
     if skipped:
         click.echo(
-            f"Skipped {len(skipped)} checker(s) not installed or not on PATH: "
-            + ", ".join(skipped),
+            f"Skipped {len(skipped)} checker(s) not installed or not working: "
+            + ", ".join(adapter.name for adapter in skipped),
             err=True,
         )
-        for name in skipped:
-            click.echo(f"  {name:<8} {install_hint(name)}", err=True)
+        for adapter in skipped:
+            if adapter.is_on_path():
+                reason = f"found at {adapter.executable} but '--version' failed"
+            else:
+                reason = install_hint(adapter.name)
+            click.echo(f"  {adapter.name:<8} {reason}", err=True)
         click.echo("Use --require-all to fail instead of skipping.", err=True)
 
     if not results:
@@ -226,35 +250,57 @@ def check(
         )
         sys.exit(2)
 
-    # Report any adapter errors (non-zero returncode is normal; unexpected
-    # exceptions are worth surfacing as warnings)
+    # A failed checker (crash, timeout, config error) is not "a checker that
+    # found nothing": keep it out of checkers_run so it never counts toward M.
+    checker_errors: dict[str, str] = {}
+    checker_warnings: dict[str, list[str]] = {}
     for result in results:
+        if result.warnings:
+            checker_warnings[result.checker_name] = result.warnings
+            for message in result.warnings:
+                click.echo(f"Warning: {message}", err=True)
         if result.error is not None:
+            checker_errors[result.checker_name] = _describe_error(result.error)
             click.echo(
-                f"Warning: {result.checker_name} encountered an unexpected error: {result.error}",
+                f"Error: {result.checker_name} failed: {checker_errors[result.checker_name]}",
                 err=True,
             )
 
     # Aggregate results
     checkers_run: list[str] = []
     checker_versions: dict[str, str | None] = {}
+    checker_returncodes: dict[str, int] = {}
+    checker_durations_ms: dict[str, float] = {}
     total_diagnostics: dict[str, int] = {}
     all_diagnostics = []
 
     for result in results:
+        if result.error is not None:
+            continue
         name = result.checker_name
         checkers_run.append(name)
         checker_versions[name] = result.invocation.version
+        checker_returncodes[name] = result.invocation.returncode
+        checker_durations_ms[name] = round(result.invocation.duration_ms, 1)
         total_diagnostics[name] = len(result.diagnostics)
         all_diagnostics.extend(result.diagnostics)
 
     # Align diagnostics into clusters
-    clusters = align(all_diagnostics, line_tolerance=line_tolerance)
+    clusters = align(all_diagnostics, line_tolerance=line_tolerance, root=invocation_cwd)
 
     # Build the comparison report
     report = ComparisonReport(
+        rety_version=__version__,
+        cwd=invocation_cwd,
+        paths=list(paths),
+        python=python,
+        line_tolerance=line_tolerance,
         checkers_run=checkers_run,
+        checker_errors=checker_errors,
+        checker_warnings=checker_warnings,
         checker_versions=checker_versions,
+        checker_returncodes=checker_returncodes,
+        checker_durations_ms=checker_durations_ms,
         total_diagnostics=total_diagnostics,
         clusters=clusters,
     )
@@ -269,6 +315,11 @@ def check(
     else:
         terminal.render(report, verbose=verbose)
 
+    # A failed checker means the comparison is incomplete; never let that pass
+    # silently as a clean run (or as a passing --fail-on gate).
+    if checker_errors:
+        sys.exit(3)
+
     if _fail_threshold_met(report, fail_on.lower()):
         sys.exit(1)
 
@@ -276,6 +327,14 @@ def check(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _describe_error(error: Exception) -> str:
+    """One-line description of a checker failure for stderr and the report."""
+    if isinstance(error, subprocess.TimeoutExpired):
+        return f"timed out after {error.timeout:g} seconds (see --timeout)"
+    message = " ".join(str(error).split())
+    return message or type(error).__name__
 
 
 def _fail_threshold_met(report: ComparisonReport, fail_on: str) -> bool:

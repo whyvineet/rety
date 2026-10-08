@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 24,
+      "column": 12,
+      "stop_line": 24,
+      "stop_column": 24,
+      "path": "tests/fixtures/gradual_any.py",
+      "code": -2,
+      "name": "no-any-return-implicit",
+      "description": "Returning implicit Any from function declared to return \"str\"",
+      "concise_description": "Returning implicit Any from function declared to return \"str\"",
+      "severity": "error"
+    }
+  ]
+}

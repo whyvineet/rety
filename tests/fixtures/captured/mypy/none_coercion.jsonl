@@ -1,0 +1,3 @@
+{"file": "tests\\fixtures\\none_coercion.py", "line": 30, "column": 16, "end_line": 30, "end_column": 20, "message": "Argument 1 to \"len\" has incompatible type \"str | None\"; expected \"Sized\"", "hint": null, "code": "arg-type", "severity": "error"}
+{"file": "tests\\fixtures\\none_coercion.py", "line": 33, "column": 13, "end_line": 33, "end_column": 23, "message": "Item \"None\" of \"str | None\" has no attribute \"strip\"", "hint": null, "code": "union-attr", "severity": "error"}
+{"file": "tests\\fixtures\\none_coercion.py", "line": 41, "column": 13, "end_line": 41, "end_column": 24, "message": "Item \"None\" of \"str | None\" has no attribute \"strip\"", "hint": null, "code": "union-attr", "severity": "error"}

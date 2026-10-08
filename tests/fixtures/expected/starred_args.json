@@ -1,0 +1,62 @@
+[
+  {
+    "lines": [
+      36,
+      36
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "starred_tuple",
+    "codes": {
+      "mypy": [
+        "arg-type"
+      ],
+      "pyright": [
+        "reportCallIssue"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type",
+        "too-many-positional-arguments"
+      ]
+    }
+  },
+  {
+    "lines": [
+      49,
+      49
+    ],
+    "checkers": [
+      "mypy",
+      "pyrefly",
+      "pyright",
+      "ty"
+    ],
+    "confidence": "high",
+    "node": "Call",
+    "scope": "pass_through",
+    "codes": {
+      "mypy": [
+        "arg-type",
+        "arg-type"
+      ],
+      "pyright": [
+        "reportArgumentType"
+      ],
+      "pyrefly": [
+        "bad-argument-type"
+      ],
+      "ty": [
+        "invalid-argument-type"
+      ]
+    }
+  }
+]
