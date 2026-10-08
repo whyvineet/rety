@@ -47,7 +47,7 @@ import hashlib
 import io
 import itertools
 import tokenize
-from collections import Counter, defaultdict
+from collections import Counter, OrderedDict, defaultdict
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 
@@ -151,7 +151,11 @@ class _Enriched:
     anchors: frozenset[_Span]
 
 
-_index_cache: dict[str, _FileIndex | None] = {}
+# Keyed by SHA-256 of file content. Bounded (least recently used entries
+# are evicted) so a long-lived process that aligns many projects, e.g. rety
+# used as a library, doesn't keep every file's index forever.
+_INDEX_CACHE_SIZE = 512
+_index_cache: OrderedDict[str, _FileIndex | None] = OrderedDict()
 
 
 def _split_source_lines(source: str) -> list[str]:
@@ -228,6 +232,7 @@ def _get_index(file_path: str) -> _FileIndex | None:
 
     key = hashlib.sha256(content).hexdigest()
     if key in _index_cache:
+        _index_cache.move_to_end(key)
         return _index_cache[key]
 
     index: _FileIndex | None
@@ -238,6 +243,8 @@ def _get_index(file_path: str) -> _FileIndex | None:
         index = None
 
     _index_cache[key] = index
+    if len(_index_cache) > _INDEX_CACHE_SIZE:
+        _index_cache.popitem(last=False)
     return index
 
 

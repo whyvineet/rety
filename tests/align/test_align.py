@@ -662,3 +662,15 @@ def test_enclosing_scope_is_qualified_with_outer_classes(tmp_path: Path) -> None
     (c,) = align([diag("mypy", 4, file=str(target), col=13)])
 
     assert c.enclosing_scope == "Config.__init__.helper"
+
+
+def test_ast_cache_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from rety import align as align_module
+
+    monkeypatch.setattr(align_module, "_INDEX_CACHE_SIZE", 3)
+    for i in range(10):
+        target = tmp_path / f"m{i}.py"
+        target.write_text(f"x = {i}\n")
+        align_module._get_index(str(target))
+
+    assert len(align_module._index_cache) == 3
