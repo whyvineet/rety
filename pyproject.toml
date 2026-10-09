@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "rety"
-version = "0.1.0"
+version = "0.2.0"
 description = "A cross-checker diagnostic comparison tool for Python type checkers"
 readme = "README.md"
 license = { text = "MIT" }
