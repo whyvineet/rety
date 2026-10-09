@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/rety-logo-dark.svg">
-  <img src="assets/rety-logo-light.svg" alt="rety" width="260">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/rety-logo-dark.svg">
+  <img src="./assets/rety-logo-light.svg" alt="rety" width="260">
 </picture>
 
 **One codebase. Multiple type checkers. One honest view.**
