@@ -277,9 +277,7 @@ def test_parse_warnings_cause_exit_3_and_appear_in_report(
     # Error and warning must both be recorded in the report.
     assert "ty" in report["checker_errors"]
     assert "could not be fully parsed" in report["checker_errors"]["ty"]
-    assert report["checker_warnings"] == {
-        "ty": ["ty adapter: 1 line(s) did not match"]
-    }
+    assert report["checker_warnings"] == {"ty": ["ty adapter: 1 line(s) did not match"]}
 
 
 def test_parse_warning_exit_3_is_independent_of_fail_on(
@@ -298,9 +296,7 @@ def test_parse_warning_exit_3_is_independent_of_fail_on(
     target = tmp_path / "x.py"
     target.write_text("x = 1\n")
 
-    result = CliRunner().invoke(
-        cli.main, ["check", "--fail-on", "error", "-c", "ty", str(target)]
-    )
+    result = CliRunner().invoke(cli.main, ["check", "--fail-on", "error", "-c", "ty", str(target)])
 
     # Must be 3 (incomplete), not 0 (--fail-on threshold not met).
     assert result.exit_code == 3
