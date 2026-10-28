@@ -195,8 +195,8 @@ def check(
         0  run completed and the --fail-on threshold was not met
         1  the --fail-on threshold was met
         2  usage error, no checker available, or --require-all not satisfied
-        3  a checker crashed, timed out or failed on its config; the report
-           is printed but is incomplete
+        3  a checker crashed, timed out, failed on its config, or produced
+           output that rety could not fully parse; the report is incomplete
     """
     if output and output_format != "json":
         raise click.UsageError("--output is only valid with --format json.")

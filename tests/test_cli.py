@@ -251,9 +251,15 @@ def test_fail_on_error_ignores_warnings_but_any_does_not(
     assert _invoke_fail_on("any", target) == 1
 
 
-def test_parse_warnings_go_to_stderr_and_report(
+def test_parse_warnings_cause_exit_3_and_appear_in_report(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """
+    Issue #16: when the adapter emits parse warnings the run is considered
+    incomplete.  The CLI must exit 3 (not 0), print the warning to stderr,
+    record the checker in checker_errors (not checkers_run), and include the
+    warning in checker_warnings.
+    """
     from tests.test_runner import WarningAdapter
 
     adapter = WarningAdapter("ty")
@@ -263,11 +269,41 @@ def test_parse_warnings_go_to_stderr_and_report(
 
     result = CliRunner().invoke(cli.main, ["check", "-f", "json", "-c", "ty", str(target)])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 3, result.output
     assert "Warning: ty adapter: 1 line(s) did not match" in result.stderr
-    assert json.loads(result.stdout)["checker_warnings"] == {
+    report = json.loads(result.stdout)
+    # Checker must NOT appear in checkers_run (comparison is incomplete).
+    assert "ty" not in report["checkers_run"]
+    # Error and warning must both be recorded in the report.
+    assert "ty" in report["checker_errors"]
+    assert "could not be fully parsed" in report["checker_errors"]["ty"]
+    assert report["checker_warnings"] == {
         "ty": ["ty adapter: 1 line(s) did not match"]
     }
+
+
+def test_parse_warning_exit_3_is_independent_of_fail_on(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """
+    Issue #16 Scenario C / Test 4 (threshold independence):
+    An incomplete checker run must return exit code 3 even when --fail-on
+    error would otherwise have passed (the adapter emitted no error diagnostics).
+    This prevents a false-successful CI run.
+    """
+    from tests.test_runner import WarningAdapter
+
+    adapter = WarningAdapter("ty")
+    monkeypatch.setattr(cli, "ALL_ADAPTERS", {"ty": lambda **_kw: adapter})
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--fail-on", "error", "-c", "ty", str(target)]
+    )
+
+    # Must be 3 (incomplete), not 0 (--fail-on threshold not met).
+    assert result.exit_code == 3
 
 
 def test_python_option_is_made_absolute(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

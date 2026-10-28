@@ -25,7 +25,12 @@ except PackageNotFoundError:  # source checkout that has not been installed
 # `align` would shadow the rety.align submodule (`import rety.align as m`
 # would return the function). Use `from rety.align import align`.
 from rety.adapters import ALL_ADAPTERS, CheckerAdapter  # noqa: E402
-from rety.runner import CheckerResult, run_checkers  # noqa: E402
+from rety.runner import (  # noqa: E402
+    CheckerFailedError,
+    CheckerResult,
+    ParseIncompleteError,
+    run_checkers,
+)
 from rety.schema import (  # noqa: E402
     ComparisonReport,
     Confidence,
@@ -37,11 +42,13 @@ from rety.schema import (  # noqa: E402
 __all__ = [
     "ALL_ADAPTERS",
     "CheckerAdapter",
+    "CheckerFailedError",
     "CheckerResult",
     "ComparisonReport",
     "Confidence",
     "DiagnosticCluster",
     "NormalizedDiagnostic",
+    "ParseIncompleteError",
     "Severity",
     "__version__",
     "run_checkers",

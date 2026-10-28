@@ -11,7 +11,12 @@ import time
 import pytest
 
 from rety.adapters.base import AdapterCapabilities, CheckerAdapter
-from rety.runner import CheckerFailedError, CheckerUnavailableError, run_checkers
+from rety.runner import (
+    CheckerFailedError,
+    CheckerUnavailableError,
+    ParseIncompleteError,
+    run_checkers,
+)
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 
@@ -195,12 +200,81 @@ class WarningAdapter(FakeAdapter):
         return super().parse(raw)
 
 
-def test_parse_warnings_are_recorded_on_the_result_every_time() -> None:
-    """Python shows a warning once per location by default; rety must not lose repeats."""
+def test_parse_warnings_make_result_incomplete_not_succeeded() -> None:
+    """
+    Issue #16: a parse warning means output was not fully understood.
+    The result must be marked as failed (succeeded=False) with a
+    ParseIncompleteError so the CLI exits 3, not 0.
+    """
     for _ in range(2):
         (r,) = run_checkers([WarningAdapter("ty")], paths=["src"], cwd="/tmp")
-        assert r.succeeded
+        assert not r.succeeded, "parse warnings must mark the result as failed"
+        assert isinstance(r.error, ParseIncompleteError)
         assert r.warnings == ["ty adapter: 1 line(s) did not match"]
+
+
+def test_total_parse_failure_exits_3() -> None:
+    """
+    Scenario A: checker exits 1 (normal for findings), but the adapter emits
+    a parse warning and yields zero diagnostics.  rety must treat this as an
+    incomplete/failed run (succeeded=False, ParseIncompleteError set).
+    """
+
+    class NoParseAdapter(FakeAdapter):
+        """Always warns and returns no diagnostics."""
+
+        def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+            import warnings
+
+            warnings.warn("mypy adapter: 0 line(s) matched", RuntimeWarning, stacklevel=2)
+            return []  # nothing recognized
+
+    (r,) = run_checkers([NoParseAdapter("mypy")], paths=["src"], cwd="/tmp")
+    assert not r.succeeded
+    assert isinstance(r.error, ParseIncompleteError)
+    assert r.error.recovered == 0
+    assert r.diagnostics == []
+
+
+def test_partial_parse_failure_exits_3() -> None:
+    """
+    Scenario B: checker emits 2 diagnostics, adapter recognizes 1 and warns
+    about the other.  rety must mark the result as incomplete; the recovered
+    diagnostic is preserved on the result for debugging but the checker must
+    NOT count toward the comparison.
+    """
+
+    class PartialParseAdapter(FakeAdapter):
+        """Recognizes one diagnostic, warns about one unrecognized line."""
+
+        def parse(self, raw: RawInvocation) -> list[NormalizedDiagnostic]:
+            import warnings
+
+            warnings.warn(
+                "mypy adapter: 1 line(s) did not match any pattern",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            # Return the one diagnostic that was recognized.
+            return super().parse(raw)
+
+    (r,) = run_checkers([PartialParseAdapter("mypy")], paths=["src"], cwd="/tmp")
+    assert not r.succeeded
+    assert isinstance(r.error, ParseIncompleteError)
+    # Partial diagnostics are kept for debugging.
+    assert len(r.diagnostics) == 1
+    assert r.error.recovered == 1
+
+
+def test_clean_run_with_valid_diagnostics_still_succeeds() -> None:
+    """
+    Scenario C (regression guard): a clean parse with no warnings must still
+    succeed.  exit 1 + valid diagnostics is a normal run, not a failure.
+    """
+    (r,) = run_checkers([FakeAdapter("mypy", returncode=1)], paths=["src"], cwd="/tmp")
+    assert r.succeeded
+    assert len(r.diagnostics) == 1
+    assert r.warnings == []
 
 
 def test_parse_exception_is_captured_with_the_real_invocation() -> None:
