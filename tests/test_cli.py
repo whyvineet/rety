@@ -317,3 +317,151 @@ def test_python_option_is_made_absolute(monkeypatch: pytest.MonkeyPatch, tmp_pat
     CliRunner().invoke(cli.main, ["check", "-c", "mypy", "--python", "python.exe", "x.py"])
 
     assert seen["python"] == str((tmp_path / "python.exe").resolve())
+
+
+def test_json_report_records_requested_and_empty_skipped_when_all_available(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--format", "json", "--checker", "mypy,pyright", str(target)]
+    )
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)
+    assert report["checkers_requested"] == ["mypy", "pyright"]
+    assert report["checkers_run"] == ["mypy", "pyright"]
+    assert report["checkers_skipped"] == {}
+    assert report["checker_errors"] == {}
+
+
+def test_json_report_records_unavailable_checkers_in_checkers_skipped(
+    fake_registry: dict[str, FakeAdapter], tmp_path: Path
+) -> None:
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--format", "json", "--checker", "mypy,pyrefly", str(target)]
+    )
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)
+    assert report["checkers_requested"] == ["mypy", "pyrefly"]
+    assert report["checkers_run"] == ["mypy"]
+    assert "pyrefly" in report["checkers_skipped"]
+    assert "Not installed or not found on PATH" in report["checkers_skipped"]["pyrefly"]
+
+
+def test_json_report_broken_installation_records_version_detection_reason(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ok = FakeAdapter("mypy")
+    broken = FakeAdapter("pyright", available=False, on_path=True)
+    monkeypatch.setattr(
+        cli, "ALL_ADAPTERS", {"mypy": lambda **_kw: ok, "pyright": lambda **_kw: broken}
+    )
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--format", "json", "--checker", "mypy,pyright", str(target)]
+    )
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.stdout)
+    assert report["checkers_requested"] == ["mypy", "pyright"]
+    assert report["checkers_run"] == ["mypy"]
+    assert "pyright" in report["checkers_skipped"]
+    assert "--version failed" in report["checkers_skipped"]["pyright"]
+    assert broken.executable in report["checkers_skipped"]["pyright"]
+
+
+def test_failed_or_timed_out_checkers_appear_in_errors_not_skipped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ok = FakeAdapter("mypy")
+    timed_out = FakeAdapter("pyright", timeout_after=5)
+    monkeypatch.setattr(
+        cli, "ALL_ADAPTERS", {"mypy": lambda **_kw: ok, "pyright": lambda **_kw: timed_out}
+    )
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main, ["check", "--format", "json", "--checker", "mypy,pyright", str(target)]
+    )
+
+    assert result.exit_code == 3
+    report = json.loads(result.stdout)
+    assert report["checkers_requested"] == ["mypy", "pyright"]
+    assert report["checkers_run"] == ["mypy"]
+    assert "pyright" in report["checker_errors"]
+    assert "pyright" not in report["checkers_skipped"]
+
+
+def test_requested_skipped_completed_and_failed_checkers_distinguished(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ok = FakeAdapter("mypy")
+    failed = FakeAdapter("pyright", returncode=3, stdout="", stderr="crash")
+    uninstalled = FakeAdapter("pyrefly", available=False, on_path=False)
+    broken = FakeAdapter("ty", available=False, on_path=True)
+    monkeypatch.setattr(
+        cli,
+        "ALL_ADAPTERS",
+        {
+            "mypy": lambda **_kw: ok,
+            "pyright": lambda **_kw: failed,
+            "pyrefly": lambda **_kw: uninstalled,
+            "ty": lambda **_kw: broken,
+        },
+    )
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main,
+        ["check", "--format", "json", "--checker", "mypy,pyright,pyrefly,ty", str(target)],
+    )
+
+    assert result.exit_code == 3
+    report = json.loads(result.stdout)
+    assert report["checkers_requested"] == ["mypy", "pyright", "pyrefly", "ty"]
+    assert report["checkers_run"] == ["mypy"]
+    assert "pyrefly" in report["checkers_skipped"]
+    assert "ty" in report["checkers_skipped"]
+    assert "pyright" not in report["checkers_skipped"]
+    assert "pyright" in report["checker_errors"]
+    assert "mypy" not in report["checker_errors"]
+    assert "mypy" not in report["checkers_skipped"]
+
+
+def test_terminal_output_displays_skipped_and_failed_checkers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ok = FakeAdapter("mypy")
+    failed = FakeAdapter("pyright", returncode=3, stdout="", stderr="crash")
+    uninstalled = FakeAdapter("pyrefly", available=False, on_path=False)
+    monkeypatch.setattr(
+        cli,
+        "ALL_ADAPTERS",
+        {
+            "mypy": lambda **_kw: ok,
+            "pyright": lambda **_kw: failed,
+            "pyrefly": lambda **_kw: uninstalled,
+        },
+    )
+    target = tmp_path / "x.py"
+    target.write_text("x = 1\n")
+
+    result = CliRunner().invoke(
+        cli.main,
+        ["check", "--checker", "mypy,pyright,pyrefly", str(target)],
+    )
+
+    assert "skipped: pyrefly" in result.stdout
+    assert "failed: pyright" in result.stdout
+    assert "mypy" in result.stdout

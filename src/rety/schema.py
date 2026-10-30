@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import hashlib
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -330,11 +331,20 @@ class ComparisonReport(BaseModel):
     """The --line-tolerance used for clustering."""
 
     # ---- Per-checker results ----
+    checkers_requested: list[str] = Field(default_factory=list)
+    """Checkers originally requested on the command line or via API."""
+
     checkers_run: list[str]
     """
     Names of the checkers that ran to completion (not all four, if fewer were
     available). A checker that crashed, timed out or failed on its config is
     listed in checker_errors instead, so it never counts toward M in "N/M".
+    """
+
+    checkers_skipped: dict[str, str] = Field(default_factory=dict)
+    """
+    Checkers that were requested but not invoked (e.g. not installed or
+    version detection failed), mapped to the reason they were skipped.
     """
 
     checker_errors: dict[str, str] = Field(default_factory=dict)
@@ -361,6 +371,14 @@ class ComparisonReport(BaseModel):
 
     clusters: list[DiagnosticCluster]
     """All clusters, sorted by file then representative start line."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_checkers_requested(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "checkers_requested" not in data and "checkers_run" in data:
+                data["checkers_requested"] = list(data["checkers_run"])
+        return data
 
 
 # ---------------------------------------------------------------------------

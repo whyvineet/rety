@@ -58,7 +58,9 @@ def test_render_produces_documented_top_level_shape() -> None:
         "paths",
         "python",
         "line_tolerance",
+        "checkers_requested",
         "checkers_run",
+        "checkers_skipped",
         "checker_errors",
         "checker_warnings",
         "checker_versions",
@@ -68,7 +70,9 @@ def test_render_produces_documented_top_level_shape() -> None:
         "clusters",
     ]
     assert doc["schema_version"] == SCHEMA_VERSION
+    assert doc["checkers_requested"] == ["mypy", "pyright", "ty"]
     assert doc["checkers_run"] == ["mypy", "pyright", "ty"]
+    assert doc["checkers_skipped"] == {}
     assert doc["checker_versions"]["ty"] is None
     assert len(doc["clusters"]) == 2
 
@@ -102,3 +106,32 @@ def test_render_to_file_writes_utf8_with_trailing_newline(tmp_path: Path) -> Non
     assert text.endswith("\n")
     assert "↔" in text  # alignment signals keep their unicode arrow
     assert json.loads(text)["schema_version"] == SCHEMA_VERSION
+
+
+def test_render_includes_skipped_checkers() -> None:
+    report = ComparisonReport(
+        checkers_requested=["mypy", "pyrefly"],
+        checkers_run=["mypy"],
+        checkers_skipped={"pyrefly": "Not installed or not found on PATH"},
+        checker_versions={"mypy": "1.0"},
+        total_diagnostics={"mypy": 0},
+        clusters=[],
+    )
+    doc = json.loads(json_report.render(report))
+    assert doc["checkers_requested"] == ["mypy", "pyrefly"]
+    assert doc["checkers_run"] == ["mypy"]
+    assert doc["checkers_skipped"] == {"pyrefly": "Not installed or not found on PATH"}
+
+
+def test_legacy_report_without_checkers_requested_defaults_to_checkers_run() -> None:
+    raw = json.dumps(
+        {
+            "checkers_run": ["mypy", "pyright"],
+            "checker_versions": {"mypy": "1.0", "pyright": "1.0"},
+            "total_diagnostics": {"mypy": 0, "pyright": 0},
+            "clusters": [],
+        }
+    )
+    report = ComparisonReport.model_validate_json(raw)
+    assert report.checkers_requested == ["mypy", "pyright"]
+    assert report.checkers_skipped == {}

@@ -125,10 +125,17 @@ def _render_header(con: Console, report: ComparisonReport) -> None:
         version = report.checker_versions.get(checker) or "?"
         checker_parts.append(f"[{style}]{rich_escape(checker)}[/] {rich_escape(version)}")
 
-    checkers_str = "   ".join(checker_parts)
+    lines: list[str] = []
+    if checker_parts:
+        lines.append("   ".join(checker_parts))
+    if report.checkers_skipped:
+        skipped = ", ".join(rich_escape(name) for name in report.checkers_skipped)
+        lines.append(f"[yellow]skipped:[/] {skipped} [dim](not installed or not working)[/]")
     if report.checker_errors:
         failed = ", ".join(rich_escape(name) for name in report.checker_errors)
-        checkers_str += f"\n[bold red]failed:[/] {failed} [dim](not counted; see stderr)[/]"
+        lines.append(f"[bold red]failed:[/] {failed} [dim](not counted; see stderr)[/]")
+
+    checkers_str = "\n".join(lines) if lines else "[dim]none[/]"
     con.print()
     con.print(
         Panel(
