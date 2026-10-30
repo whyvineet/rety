@@ -66,7 +66,7 @@ rety check --python .venv/bin/python src/  # make every checker use your project
 | `0`  | Run completed and the `--fail-on` threshold was not met |
 | `1`  | The `--fail-on` threshold was met |
 | `2`  | Usage error, no checker available, or `--require-all` not satisfied |
-| `3`  | A checker crashed, timed out, or rejected its config (the report is incomplete) |
+| `3`  | A checker crashed, timed out, rejected its config, or produced output that rety could not fully parse (the report is incomplete) |
 
 By default (`--fail-on none`) rety exits `0` whenever the run itself succeeded, regardless of what the checkers found.
 

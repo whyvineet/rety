@@ -75,6 +75,31 @@ class CheckerFailedError(Exception):
         self.returncode = returncode
 
 
+class ParseIncompleteError(Exception):
+    """
+    Raised (and captured on CheckerResult.error) when the adapter's parser
+    emitted warnings, indicating that some or all of the checker's output was
+    not understood — e.g. because the checker changed its output format.
+
+    This is distinct from CheckerFailedError (which captures a bad exit code)
+    because the process may have exited successfully while rety failed to parse
+    its output.  Any diagnostics that *were* recovered before the warning are
+    preserved on CheckerResult.diagnostics for debugging, but the result is
+    still marked as failed so the CLI exits 3 and excludes this checker from
+    the comparison.
+    """
+
+    def __init__(self, checker_name: str, parse_warnings: list[str], recovered: int) -> None:
+        warning_detail = "; ".join(parse_warnings)
+        super().__init__(
+            f"{checker_name} output could not be fully parsed "
+            f"({recovered} diagnostic(s) recovered): {warning_detail}"
+        )
+        self.checker_name = checker_name
+        self.parse_warnings = list(parse_warnings)
+        self.recovered = recovered
+
+
 def _tail(text: str, max_lines: int = 5, max_chars: int = 500) -> str:
     """Last few non-empty lines of checker output, for an error message."""
     lines = [line for line in text.strip().splitlines() if line.strip()]
@@ -117,15 +142,23 @@ class CheckerResult:
         adapter:      The adapter that produced this result.
         invocation:   Raw subprocess invocation details (stdout, stderr, timing).
         diagnostics:  Normalized diagnostics parsed from the invocation output.
-        error:        Set if the adapter encountered an unexpected error during
-                      run() or parse() (including a timeout), or if the checker
-                      exited outside adapter.ok_returncodes without producing
-                      any diagnostics (CheckerFailedError). A non-zero code with
-                      diagnostics is normal and is not an error.
+                      When error is a ParseIncompleteError, this may contain
+                      the diagnostics that were recovered before parsing failed;
+                      they are kept for debugging but must NOT be used in the
+                      comparison (the checker is excluded from checkers_run).
+        error:        Set when the result cannot be trusted:
+                      - CheckerFailedError: exited outside ok_returncodes with
+                        no diagnostics (config error, crash, unsupported flag).
+                      - ParseIncompleteError: the adapter emitted parse warnings
+                        indicating unrecognised or dropped output lines; the
+                        checker output format may have changed.
+                      - Any other exception from run() or parse() (e.g. timeout).
+                      A non-zero returncode with clean diagnostics is NOT an
+                      error — that is a normal "diagnostics found" exit.
         warnings:     Warnings the adapter's parser emitted, e.g. output lines
-                      it did not recognise. Non-empty usually means the
-                      checker's output format changed and results may be
-                      incomplete.
+                      it did not recognise. When non-empty, error will also be
+                      set to a ParseIncompleteError so the incomplete run is
+                      visible in the CLI exit code and the JSON report.
     """
 
     adapter: CheckerAdapter
@@ -249,6 +282,17 @@ def _parse(adapter: CheckerAdapter, outcome: RawInvocation | Exception) -> Check
     """
     Parse one checker's output into a CheckerResult, recording any warnings
     the parser emits (e.g. unrecognised output lines) on the result.
+
+    Trust rules (applied in order):
+    1. If run() raised, record the exception and return a failed result.
+    2. If parse() raised, capture the exception with the raw invocation.
+    3. If the parser emitted warnings, the output was not fully understood —
+       raise ParseIncompleteError so the CLI exits 3 and excludes this
+       checker from the comparison.  Partial diagnostics are preserved on
+       the result for debugging.
+    4. If the checker exited outside ok_returncodes with no diagnostics,
+       classify as CheckerFailedError (config error / crash).
+    5. Otherwise the result is clean and trusted.
     """
     if isinstance(outcome, Exception):
         return _failed(adapter, outcome)
@@ -262,6 +306,25 @@ def _parse(adapter: CheckerAdapter, outcome: RawInvocation | Exception) -> Check
         return _failed(adapter, exc, invocation)
     parse_warnings = [str(w.message) for w in caught]
 
+    # Rule 3: any parse warning means the output was not fully understood.
+    # We cannot tell how many diagnostics were silently dropped, so the entire
+    # result must be treated as incomplete — even if some diagnostics were
+    # recovered.  Partial diagnostics are kept for debugging but the checker
+    # is excluded from the comparison (error is set, so succeeded is False).
+    if parse_warnings:
+        return CheckerResult(
+            adapter=adapter,
+            invocation=invocation,
+            diagnostics=diagnostics,  # preserved for debugging only
+            error=ParseIncompleteError(
+                adapter.name,
+                parse_warnings,
+                recovered=len(diagnostics),
+            ),
+            warnings=parse_warnings,
+        )
+
+    # Rule 4: bad exit code with no diagnostics → config error / crash.
     if invocation.returncode not in adapter.ok_returncodes and not diagnostics:
         return CheckerResult(
             adapter=adapter,
@@ -272,13 +335,15 @@ def _parse(adapter: CheckerAdapter, outcome: RawInvocation | Exception) -> Check
                 invocation.returncode,
                 invocation.stderr or invocation.stdout,
             ),
-            warnings=parse_warnings,
+            warnings=[],
         )
+
+    # Rule 5: clean, trusted result.
     return CheckerResult(
         adapter=adapter,
         invocation=invocation,
         diagnostics=diagnostics,
-        warnings=parse_warnings,
+        warnings=[],
     )
 
 
