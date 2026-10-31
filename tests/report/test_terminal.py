@@ -107,3 +107,33 @@ def test_diagnostic_without_file_gets_a_readable_header() -> None:
     )
 
     assert "(no file)" in _render_to_text(report)
+
+
+def test_header_shows_skipped_checkers() -> None:
+    report = ComparisonReport(
+        checkers_requested=["mypy", "pyrefly"],
+        checkers_run=["mypy"],
+        checkers_skipped={"pyrefly": "Not installed or not found on PATH"},
+        checker_versions={"mypy": "1.0"},
+        total_diagnostics={"mypy": 0},
+        clusters=[],
+    )
+    out = _render_to_text(report)
+    assert "skipped: pyrefly" in out
+    assert "mypy 1.0" in out
+
+
+def test_header_distinguishes_skipped_and_failed_checkers() -> None:
+    report = ComparisonReport(
+        checkers_requested=["mypy", "pyrefly", "ty"],
+        checkers_run=["mypy"],
+        checkers_skipped={"pyrefly": "Not installed or not found on PATH"},
+        checker_errors={"ty": "timed out after 5 seconds"},
+        checker_versions={"mypy": "1.0"},
+        total_diagnostics={"mypy": 0},
+        clusters=[],
+    )
+    out = _render_to_text(report)
+    assert "skipped: pyrefly" in out
+    assert "failed: ty" in out
+    assert "mypy 1.0" in out

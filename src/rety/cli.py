@@ -227,6 +227,14 @@ def check(
     # Tell the user which selected checkers were not found, and how to get them.
     ran = {result.checker_name for result in results}
     skipped = [adapter for adapter in adapters if adapter.name not in ran]
+    checkers_skipped = {
+        adapter.name: (
+            f"Found at {adapter.executable}, but --version failed"
+            if adapter.is_on_path()
+            else "Not installed or not found on PATH"
+        )
+        for adapter in skipped
+    }
     if skipped:
         click.echo(
             f"Skipped {len(skipped)} checker(s) not installed or not working: "
@@ -295,7 +303,9 @@ def check(
         paths=list(paths),
         python=python,
         line_tolerance=line_tolerance,
+        checkers_requested=checker_names,
         checkers_run=checkers_run,
+        checkers_skipped=checkers_skipped,
         checker_errors=checker_errors,
         checker_warnings=checker_warnings,
         checker_versions=checker_versions,
