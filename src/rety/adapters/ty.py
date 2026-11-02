@@ -57,6 +57,7 @@ from rety.adapters.base import (
     parse_version_output,
     resolve_path,
 )
+from rety.coordinates import normalize_checker_columns
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # ---------------------------------------------------------------------------
@@ -202,22 +203,30 @@ class TyAdapter(CheckerAdapter):
 
             severity = _SEVERITY_MAP.get(m.group("severity").lower(), Severity.error)
 
-            col_raw = int(m.group("col"))
-            start_col: int | None = col_raw if col_raw != 0 else None
-
             # ty prints paths relative to its cwd when given relative paths;
             # resolve against the invocation cwd recorded on RawInvocation.
             file_path = resolve_path(m.group("file"), raw.cwd)
+            start_line = int(m.group("line"))
+
+            # ty emits 1-indexed Unicode code-point offsets in concise format.
+            col_raw = int(m.group("col"))
+            start_col, _, uncertain = normalize_checker_columns(
+                file_path=file_path,
+                checker="ty",
+                start_line=start_line,
+                start_col=col_raw if col_raw != 0 else None,
+            )
 
             diagnostics.append(
                 NormalizedDiagnostic(
                     checker="ty",
                     checker_version=raw.version,
                     file=file_path,
-                    start_line=int(m.group("line")),
+                    start_line=start_line,
                     start_col=start_col,
                     end_line=None,  # concise format has no end position
                     end_col=None,
+                    column_uncertain=uncertain,
                     severity=severity,
                     code=m.group("code") or None,
                     message=m.group("message").strip(),

@@ -50,6 +50,7 @@ from rety.adapters.base import (
     parse_version_output,
     resolve_path,
 )
+from rety.coordinates import normalize_checker_columns
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # mypy severity strings → Severity enum
@@ -170,14 +171,22 @@ class MypyAdapter(CheckerAdapter):
                 skipped_no_location += 1
                 continue
 
-            # Columns are 0-indexed and converted here.
-            start_col: int | None = _col_to_1indexed(obj.get("column"))
             end_line: int | None = _line_or_none(obj.get("end_line"))
-            end_col: int | None = _col_to_1indexed(obj.get("end_column"))
 
             # mypy prints paths relative to its cwd when given relative args;
             # resolve against the invocation cwd recorded on RawInvocation.
             file_path = resolve_path(file_raw, raw.cwd)
+
+            # Columns in mypy JSON are 0-indexed UTF-8 byte offsets.
+            # Convert to 1-indexed Unicode code-point offsets.
+            start_col, end_col, uncertain = normalize_checker_columns(
+                file_path=file_path,
+                checker="mypy",
+                start_line=start_line,
+                start_col=obj.get("column"),
+                end_line=end_line,
+                end_col=obj.get("end_column"),
+            )
 
             diagnostics.append(
                 NormalizedDiagnostic(
@@ -188,6 +197,7 @@ class MypyAdapter(CheckerAdapter):
                     start_col=start_col,
                     end_line=end_line,
                     end_col=end_col,
+                    column_uncertain=uncertain,
                     severity=severity,
                     code=str(obj["code"]) if obj.get("code") else None,
                     message=_message_with_hint(obj),
