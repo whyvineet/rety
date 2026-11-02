@@ -59,6 +59,7 @@ from rety.adapters.base import (
     parse_version_output,
     resolve_path,
 )
+from rety.coordinates import normalize_checker_columns
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 _SEVERITY_MAP: dict[str, Severity] = {
@@ -215,10 +216,17 @@ class PyreflyAdapter(CheckerAdapter):
         file_raw = obj.get("path") or ""
         file_path = resolve_path(str(file_raw), raw_cwd) if file_raw else ""
 
-        # 1-indexed already; 0 or negative means unknown.
-        start_col = _positive_int_or_none(obj.get("column"))
         end_line = _positive_int_or_none(obj.get("stop_line"))
-        end_col = _positive_int_or_none(obj.get("stop_column"))
+
+        # Pyrefly emits 1-indexed Unicode code-point offsets.
+        start_col, end_col, uncertain = normalize_checker_columns(
+            file_path=file_path,
+            checker="pyrefly",
+            start_line=start_line,
+            start_col=obj.get("column"),
+            end_line=end_line,
+            end_col=obj.get("stop_column"),
+        )
 
         # "name" is the rule; the integer "code" field is not.
         name = obj.get("name")
@@ -234,6 +242,7 @@ class PyreflyAdapter(CheckerAdapter):
             start_col=start_col,
             end_line=end_line,
             end_col=end_col,
+            column_uncertain=uncertain,
             severity=severity,
             code=code,
             message=message,

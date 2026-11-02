@@ -58,6 +58,7 @@ from rety.adapters.base import (
     parse_version_output,
     resolve_path,
 )
+from rety.coordinates import normalize_checker_columns
 from rety.schema import NormalizedDiagnostic, RawInvocation, Severity
 
 # Pyright severity strings → Severity enum
@@ -193,19 +194,41 @@ class PyrightAdapter(CheckerAdapter):
         if not isinstance(range_obj, dict):
             return None
 
-        # Pyright uses 0-indexed LSP-style ranges → convert to 1-indexed.
-        start_line, start_col = _position(range_obj.get("start")) or (None, None)
-        if start_line is None:
-            return None  # never invent a position
-        end_line, end_col = _position(range_obj.get("end")) or (None, None)
+        start_pos = range_obj.get("start")
+        start_obj = start_pos if isinstance(start_pos, dict) else {}
+        end_pos = range_obj.get("end")
+        end_obj = end_pos if isinstance(end_pos, dict) else {}
 
-        severity_str = str(obj.get("severity") or "error").lower()
-        severity = _SEVERITY_MAP.get(severity_str, Severity.error)
+        start_line_0 = start_obj.get("line")
+        if not isinstance(start_line_0, int) or isinstance(start_line_0, bool) or start_line_0 < 0:
+            return None
+        start_line = start_line_0 + 1
+
+        end_line_0 = end_obj.get("line")
+        end_line = (
+            end_line_0 + 1
+            if isinstance(end_line_0, int) and not isinstance(end_line_0, bool) and end_line_0 >= 0
+            else None
+        )
 
         # Pyright prints absolute paths; resolve anyway to normalize
         # drive-letter case and separators on Windows.
         file_raw = obj.get("file") or ""
         file_path = resolve_path(str(file_raw), raw_cwd) if file_raw else ""
+
+        # Pyright uses 0-indexed LSP character offsets (UTF-16 code units).
+        # Convert to 1-indexed Unicode code-point offsets.
+        start_col, end_col, uncertain = normalize_checker_columns(
+            file_path=file_path,
+            checker="pyright",
+            start_line=start_line,
+            start_col=start_obj.get("character"),
+            end_line=end_line,
+            end_col=end_obj.get("character"),
+        )
+
+        severity_str = str(obj.get("severity") or "error").lower()
+        severity = _SEVERITY_MAP.get(severity_str, Severity.error)
 
         rule = obj.get("rule")  # absent when there is no rule
 
@@ -217,6 +240,7 @@ class PyrightAdapter(CheckerAdapter):
             start_col=start_col,
             end_line=end_line,
             end_col=end_col,
+            column_uncertain=uncertain,
             severity=severity,
             code=str(rule) if rule else None,
             message=str(obj.get("message") or ""),

@@ -70,15 +70,18 @@ uv run --with ty ty version
 ## Notes on checker-specific behaviors
 
 ### mypy
-- JSON `column` and `end_column` are 0-indexed (the text output adds 1);
-  rety converts them to 1-indexed. A negative column means unknown.
+- JSON `column` and `end_column` are 0-indexed UTF-8 byte offsets (the text output
+  adds 1); rety normalizes them to 1-indexed Unicode code-point offsets using the
+  source file text. A negative column means unknown.
 - rety passes `--no-incremental` and an ephemeral `--cache-dir` so a stale
   cache can never override `--output`.
 - mypy 2.x emits syntax errors as JSON (`"code": "syntax"`). The plain-text
   fallback of mypy 1.x (bug #17660) is still tolerated with a warning.
 
 ### Pyright
-- 0-indexed LSP-style `range`; rety converts to 1-indexed.
+- 0-indexed LSP-style `range` character offsets are UTF-16 code units (surrogate
+  pairs for non-BMP characters like emojis take 2 code units). rety normalizes them
+  to 1-indexed Unicode code-point offsets using the source file text.
 - `rule` is omitted (not null) for diagnostics that have no rule, such as
   unknown `# pyright:` directives.
 - `--outputjson` suppresses progress output; stdout is one JSON document.
@@ -88,14 +91,48 @@ uv run --with ty ty version
 ### Pyrefly
 - `code` is an internal integer (-2 in every observed diagnostic); the rule
   name is in `name`.
-- `stop_line`/`stop_column` are the (1-indexed, exclusive) end position.
+- `line`/`column` and `stop_line`/`stop_column` are 1-indexed Unicode code-point
+  offsets (exclusive end column).
 - Without a `pyrefly.toml`, Pyrefly imports settings from `[tool.mypy]` and
   says so on stderr.
 - Native SARIF 2.1.0 output is available via `--output-format sarif`.
 
 ### ty
+- Columns in `--output-format concise` are 1-indexed Unicode code-point offsets
+  (character counts), matching Astral / Ruff's source index.
 - Pre-1.0; `concise` is text, one diagnostic per line, followed by a
   `Found N diagnostics` or `All checks passed!` summary line on stdout.
 - `ty version --output-format json` gives structured version info.
 - `ty explain rule --output-format json <code>` is a future crosswalk data
   source.
+
+---
+
+## Coordinate Normalization (Issue #18)
+
+Different Python type checkers report columns using different coordinate units:
+- **mypy**: 0-indexed UTF-8 byte offsets
+- **Pyright**: 0-indexed UTF-16 code units (LSP position convention)
+- **pyrefly**: 1-indexed Unicode code points
+- **ty**: 1-indexed Unicode code points
+
+### Canonical Internal Convention
+Internally, rety uses a canonical coordinate system:
+- **Line numbers**: 1-indexed (preserves standard Python/editor conventions).
+- **Column numbers**: 0-based Unicode code-point offsets.
+- **End columns**: 0-based exclusive Unicode code-point offsets (or `None`).
+- **Source positions**: measured against the original source line text.
+
+### Public JSON and Terminal Output
+Public JSON output (`ComparisonReport` / `NormalizedDiagnostic`) and terminal
+reports present **1-indexed normalized Unicode code-point offsets** (`start_col`
+and `end_col`) for backward compatibility with schema_version 1 and editors.
+The canonical 0-based offsets are accessible on `NormalizedDiagnostic` via
+`canonical_start_col` and `canonical_end_col`.
+
+### Handling Missing or Unreliable Source Lines
+When source text cannot be read (e.g. non-existent file, deleted file, or out-of-range
+offsets), rety preserves the original column information and marks
+`column_uncertain = True`. Diagnostics with uncertain columns fall back to
+line-range matching during alignment and never trigger false column-disagreement
+penalties.
