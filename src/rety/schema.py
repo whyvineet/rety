@@ -16,9 +16,14 @@ Schema versioning:
 Field conventions:
     - All line numbers are 1-indexed. If a checker reports 0-indexed lines
       (Pyright), adapters convert to 1-indexed before constructing this model.
+    - start_col and end_col are 1-indexed Unicode code-point offsets. Adapters
+      normalize checker-native coordinate units (mypy UTF-8 bytes, Pyright
+      UTF-16 code units) to Unicode code points.
     - Missing end positions are represented as None, never as 0.
       A 0 end_col would silently degrade recall against checkers that do report
       end positions, by appearing to match at column 0.
+    - column_uncertain is True when a reported column could not be reliably
+      normalized to canonical Unicode code points (e.g. source file missing).
     - `raw` holds the per-diagnostic source text (the original JSON sub-object
       for JSON-based checkers, the original text line for text-based checkers).
       It is never the full checker output document repeated per diagnostic.
@@ -166,13 +171,23 @@ class NormalizedDiagnostic(BaseModel):
     """1-indexed. Always present."""
 
     start_col: int | None = None
-    """1-indexed. None if not reported by the checker (never 0)."""
+    """1-indexed Unicode code-point offset. None if not reported by the checker (never 0)."""
 
     end_line: int | None = None
     """1-indexed. None if not reported (never 0). ty's concise format omits this."""
 
     end_col: int | None = None
-    """1-indexed. None if not reported (never 0). ty's concise format omits this."""
+    """
+    1-indexed Unicode code-point offset (exclusive end). None if not reported
+    (never 0). ty's concise format omits this.
+    """
+
+    column_uncertain: bool = False
+    """
+    True if the diagnostic reported a column but it could not be reliably
+    normalized to canonical Unicode code-point coordinates (e.g. source file
+    was missing on disk or offset was out of range).
+    """
 
     # ---- Classification ----
     severity: Severity
@@ -218,6 +233,16 @@ class NormalizedDiagnostic(BaseModel):
     classes and functions around it (e.g. "Config.__init__"). None until
     enrichment, or None if the diagnostic is at module level.
     """
+
+    @property
+    def canonical_start_col(self) -> int | None:
+        """0-indexed Unicode code-point start offset, or None."""
+        return self.start_col - 1 if self.start_col is not None else None
+
+    @property
+    def canonical_end_col(self) -> int | None:
+        """0-indexed exclusive Unicode code-point end offset, or None."""
+        return self.end_col - 1 if self.end_col is not None else None
 
     @model_validator(mode="after")
     def _validate_no_zero_positions(self) -> NormalizedDiagnostic:

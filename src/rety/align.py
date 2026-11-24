@@ -51,6 +51,12 @@ from collections import Counter, OrderedDict, defaultdict
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 
+from rety.coordinates import (
+    clear_source_cache,
+    get_source_lines,
+    normalize_diagnostic,
+    utf8_col_to_codepoint,
+)
 from rety.crosswalk import lookup_code_family
 from rety.schema import (
     Confidence,
@@ -170,9 +176,7 @@ def _char_col(lines: list[str], lineno: int, byte_col: int) -> int:
     if not 1 <= lineno <= len(lines):
         return byte_col
     line = lines[lineno - 1]
-    if line.isascii():
-        return byte_col
-    return len(line.encode("utf-8")[:byte_col].decode("utf-8", errors="ignore"))
+    return utf8_col_to_codepoint(line, byte_col)
 
 
 def _build_index(tree: ast.Module, lines: list[str]) -> _FileIndex:
@@ -313,6 +317,11 @@ def _enrich_diagnostics(
     If the file can't be indexed, the diagnostics are returned unchanged with
     no anchors.
     """
+    lines = get_source_lines(file_path)
+    diagnostics = [
+        normalize_diagnostic(diag, lines=lines) if diag.column_uncertain else diag
+        for diag in diagnostics
+    ]
     diagnostics = [
         diag.model_copy(update={"code_family": lookup_code_family(diag.checker, diag.code)})
         for diag in diagnostics
@@ -378,6 +387,8 @@ def _columns_disagree(d1: NormalizedDiagnostic, d2: NormalizedDiagnostic) -> boo
     with no column at all gives no evidence either way.
     """
     if d1.start_line != d2.start_line or d1.start_col is None or d2.start_col is None:
+        return False
+    if d1.column_uncertain or d2.column_uncertain:
         return False
     if d1.start_col == d2.start_col:
         return False
@@ -727,3 +738,4 @@ def clear_ast_cache() -> None:
     in production: the cache is keyed by file content, so it is always correct.
     """
     _index_cache.clear()
+    clear_source_cache()
